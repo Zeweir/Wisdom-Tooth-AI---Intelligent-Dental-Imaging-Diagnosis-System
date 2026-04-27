@@ -7,7 +7,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.config import DATABASE_URL
 from app.database import Base
-from app.models import ImageRecord, ReportRecord
+from app.models import AuditLogRecord, ImageRecord, ReportRecord
 
 config = context.config
 config.set_main_option("sqlalchemy.url", DATABASE_URL)

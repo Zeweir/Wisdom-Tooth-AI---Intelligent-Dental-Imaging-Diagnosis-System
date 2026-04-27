@@ -4,13 +4,14 @@ from dataclasses import asdict
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
+from urllib.parse import urlsplit
 
 import jwt
 from fastapi import Depends, HTTPException, WebSocket, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWKClient
 
-from app.config import LOGTO_API_RESOURCE, LOGTO_ISSUER, LOGTO_JWKS_URI
+from app.config import LOGTO_API_RESOURCE, LOGTO_ISSUER, LOGTO_JWKS_URI, LOGTO_REQUIRE_ROLE_CLAIM, LOGTO_ROLE_CLAIM_NAMES
 
 
 @dataclass
@@ -20,8 +21,24 @@ class AuthInfo:
     organization_id: str | None
     scopes: list[str]
     audience: list[str]
+    inferred_roles: list[str]
+    token_roles: list[str]
     effective_roles: list[str]
+    role_source: str
+    role_claim_keys: list[str]
+    token_claim_keys: list[str]
+    claim_preview: dict[str, Any]
 
+
+ROLE_CLAIM_CANDIDATES: tuple[str, ...] = (
+    *dict.fromkeys([
+        *LOGTO_ROLE_CLAIM_NAMES,
+        'roles',
+        'role_names',
+        'roleNames',
+        'urn:logto:roles',
+    ]),
+)
 
 @dataclass(frozen=True)
 class RoleDefinition:
@@ -78,6 +95,12 @@ RBAC_MENU_ITEMS: tuple[dict[str, Any], ...] = (
         'description': '查看当前角色、权限与系统 RBAC 模型。',
         'required_scopes': [],
     },
+    {
+        'key': 'audit',
+        'label': '审计日志',
+        'description': '查看上传、审核、确认和分析完成等关键留痕事件。',
+        'required_scopes': ['review:reports'],
+    },
 )
 
 
@@ -111,15 +134,105 @@ def infer_roles_from_scopes(scopes: list[str]) -> list[str]:
     return [role.key for role in effective_roles]
 
 
+def normalize_string_list(value: Any) -> list[str]:
+    if isinstance(value, str):
+        items = [item.strip() for item in value.replace(',', ' ').split(' ')]
+        return [item for item in items if item]
+    if isinstance(value, (list, tuple, set)):
+        return [str(item).strip() for item in value if str(item).strip()]
+    return []
+
+
+def extract_token_roles(payload: dict[str, Any]) -> tuple[list[str], list[str]]:
+    role_claim_keys: list[str] = []
+    token_roles: list[str] = []
+
+    for claim_key, claim_value in payload.items():
+        normalized_key = claim_key.lower()
+        is_candidate = claim_key in ROLE_CLAIM_CANDIDATES or normalized_key.endswith(':roles') or normalized_key.endswith('/roles')
+        if not is_candidate:
+            continue
+
+        normalized_roles = normalize_string_list(claim_value)
+        if not normalized_roles:
+            continue
+
+        role_claim_keys.append(claim_key)
+        for role in normalized_roles:
+            if role not in token_roles:
+                token_roles.append(role)
+
+    return token_roles, role_claim_keys
+
+
+def build_claim_preview(payload: dict[str, Any], role_claim_keys: list[str]) -> dict[str, Any]:
+    preview_keys = ['sub', 'aud', 'scope', 'client_id', 'organization_id', *role_claim_keys]
+    preview: dict[str, Any] = {}
+    for key in preview_keys:
+        if key in payload:
+            preview[key] = payload[key]
+    return preview
+
+
+def get_role_claim_alignment_status(auth: AuthInfo) -> str:
+    if auth.token_roles:
+        return 'aligned'
+    if auth.inferred_roles and LOGTO_REQUIRE_ROLE_CLAIM:
+        return 'claim_required_missing'
+    if auth.inferred_roles:
+        return 'fallback_scope_inference'
+    return 'missing'
+
+
+def build_logto_custom_jwt_script() -> str:
+    claim_key = LOGTO_ROLE_CLAIM_NAMES[0] if LOGTO_ROLE_CLAIM_NAMES else 'urn:logto:roles'
+    return '\n'.join(
+        [
+            'const getCustomJwtClaims = async ({ token, context, environmentVariables }) => {',
+            '  const roleNames = Array.isArray(context?.user?.roles)',
+            "    ? context.user.roles.map((role) => typeof role === 'string' ? role : role?.name).filter(Boolean)",
+            '    : [];',
+            f"  return {{ '{claim_key}': roleNames }};",
+            '};',
+        ]
+    )
+
+
+def is_equivalent_loopback_issuer(actual_issuer: str, expected_issuer: str) -> bool:
+    actual = urlsplit(actual_issuer)
+    expected = urlsplit(expected_issuer)
+    loopback_hosts = {'127.0.0.1', 'localhost'}
+    return (
+        actual.scheme == expected.scheme
+        and actual.hostname in loopback_hosts
+        and expected.hostname in loopback_hosts
+        and actual.port == expected.port
+        and actual.path.rstrip('/') == expected.path.rstrip('/')
+    )
+
+
+def ensure_valid_issuer(payload: dict[str, Any]) -> None:
+    issuer = str(payload.get('iss', ''))
+    if issuer == LOGTO_ISSUER:
+        return
+    if issuer and is_equivalent_loopback_issuer(issuer, LOGTO_ISSUER):
+        return
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid access token: Invalid issuer')
+
+
 def validate_jwt(token: str) -> dict[str, Any]:
+    header = jwt.get_unverified_header(token)
+    algorithm = header.get('alg')
+    if not algorithm or str(algorithm).lower() == 'none':
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid access token: missing or unsafe alg header')
     signing_key = get_jwks_client().get_signing_key_from_jwt(token)
     payload = jwt.decode(
         token,
         signing_key.key,
-        algorithms=['RS256'],
-        issuer=LOGTO_ISSUER,
-        options={'verify_aud': False},
+        algorithms=[str(algorithm)],
+        options={'verify_aud': False, 'verify_iss': False},
     )
+    ensure_valid_issuer(payload)
     audience = normalize_audience(payload.get('aud'))
     if LOGTO_API_RESOURCE not in audience:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Token audience is invalid')
@@ -129,13 +242,22 @@ def validate_jwt(token: str) -> dict[str, Any]:
 def create_auth_info(payload: dict[str, Any]) -> AuthInfo:
     scope_value = payload.get('scope', '')
     scopes = [item for item in scope_value.split(' ') if item]
+    token_roles, role_claim_keys = extract_token_roles(payload)
+    inferred_roles = infer_roles_from_scopes(scopes)
+    effective_roles = token_roles or inferred_roles
     return AuthInfo(
         sub=payload.get('sub', ''),
         client_id=payload.get('client_id'),
         organization_id=payload.get('organization_id'),
         scopes=scopes,
         audience=normalize_audience(payload.get('aud')),
-        effective_roles=infer_roles_from_scopes(scopes),
+        inferred_roles=inferred_roles,
+        token_roles=token_roles,
+        effective_roles=effective_roles,
+        role_source='token_claim' if token_roles else 'scope_inference' if inferred_roles else 'none',
+        role_claim_keys=role_claim_keys,
+        token_claim_keys=sorted(payload.keys()),
+        claim_preview=build_claim_preview(payload, role_claim_keys),
     )
 
 
@@ -155,8 +277,17 @@ def build_auth_profile(auth: AuthInfo) -> dict[str, Any]:
         'client_id': auth.client_id,
         'organization_id': auth.organization_id,
         'permissions': auth.scopes,
+        'inferred_roles': auth.inferred_roles,
+        'token_roles': auth.token_roles,
         'roles': auth.effective_roles,
+        'role_source': auth.role_source,
+        'role_claim_keys': auth.role_claim_keys,
+        'configured_role_claim_names': list(LOGTO_ROLE_CLAIM_NAMES),
+        'role_claim_required': LOGTO_REQUIRE_ROLE_CLAIM,
+        'role_claim_alignment_status': get_role_claim_alignment_status(auth),
         'audience': auth.audience,
+        'token_claim_keys': auth.token_claim_keys,
+        'claim_preview': auth.claim_preview,
         'menus': menu_items,
     }
 
@@ -188,6 +319,19 @@ def build_rbac_model_payload() -> dict[str, Any]:
         ],
         'roles': [asdict(role) for role in RBAC_ROLE_DEFINITIONS],
         'menus': list(RBAC_MENU_ITEMS),
+        'role_resolution': {
+            'preferred_source': 'token_claim',
+            'fallback_source': 'scope_inference',
+            'token_role_claim_candidates': list(ROLE_CLAIM_CANDIDATES),
+            'description': '若 access token 中存在可识别的角色 claim，则优先使用该角色列表；否则根据已授予 scopes 推断匹配角色。',
+        },
+        'logto_claim_setup': {
+            'configured_claim_names': list(LOGTO_ROLE_CLAIM_NAMES),
+            'role_claim_required': LOGTO_REQUIRE_ROLE_CLAIM,
+            'custom_jwt_function_name': 'getCustomJwtClaims',
+            'custom_jwt_function_signature': 'const getCustomJwtClaims = async ({ token, context, environmentVariables }) => ({})',
+            'recommended_script': build_logto_custom_jwt_script(),
+        },
     }
 
 
@@ -200,7 +344,15 @@ def ensure_scopes(auth: AuthInfo, required_scopes: tuple[str, ...]) -> None:
         )
 
 
-def require_api_auth(*required_scopes: str):
+def ensure_role_claim_alignment(auth: AuthInfo) -> None:
+    if LOGTO_REQUIRE_ROLE_CLAIM and not auth.token_roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f'Token role claim is required. Expected one of: {", ".join(LOGTO_ROLE_CLAIM_NAMES)}',
+        )
+
+
+def require_api_auth(*required_scopes: str, enforce_role_claim: bool = True):
     async def dependency(credentials: HTTPAuthorizationCredentials | None = Depends(security)) -> AuthInfo:
         if credentials is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Authorization header is missing')
@@ -211,13 +363,15 @@ def require_api_auth(*required_scopes: str):
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f'Invalid access token: {exc}') from exc
         auth = create_auth_info(payload)
+        if enforce_role_claim:
+            ensure_role_claim_alignment(auth)
         ensure_scopes(auth, required_scopes)
         return auth
 
     return dependency
 
 
-async def authorize_websocket(websocket: WebSocket, *required_scopes: str) -> AuthInfo:
+async def authorize_websocket(websocket: WebSocket, *required_scopes: str, enforce_role_claim: bool = True) -> AuthInfo:
     token = websocket.query_params.get('access_token')
     if not token:
         await websocket.close(code=4401)
@@ -231,5 +385,7 @@ async def authorize_websocket(websocket: WebSocket, *required_scopes: str) -> Au
         await websocket.close(code=4401)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f'Invalid access token: {exc}') from exc
     auth = create_auth_info(payload)
+    if enforce_role_claim:
+        ensure_role_claim_alignment(auth)
     ensure_scopes(auth, required_scopes)
     return auth

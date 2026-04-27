@@ -6,13 +6,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
+from app.audit import create_user_audit_log, list_audit_logs, serialize_audit_log
 from app.auth import AuthInfo, authorize_websocket, build_auth_profile, build_rbac_model_payload, ensure_scopes, require_api_auth
 from app.config import ALLOWED_ORIGINS
 from app.database import SessionLocal, get_db
 from app.models import ImageRecord, ReportRecord
 from app.schemas import ImageType, ReportReviewRequest, ReportStatus
-from app.services import build_image_record, finalize_image_record, serialize_analysis
+from app.services import build_image_record, serialize_analysis
 from app.storage import storage_service
+from app.tasks import run_image_analysis
 
 app = FastAPI(title="Wisdom Tooth AI MVP API", version="0.2.0")
 app.add_middleware(
@@ -29,19 +31,6 @@ def get_image_or_404(db: Session, image_id: str) -> ImageRecord:
     if image is None:
         raise HTTPException(status_code=404, detail="未找到对应影像分析结果")
     return image
-
-
-async def process_image_analysis(image_id: str) -> None:
-    await asyncio.sleep(1.2)
-    db = SessionLocal()
-    try:
-        image = db.get(ImageRecord, image_id, options=[joinedload(ImageRecord.report)])
-        if image is None:
-            return
-        finalize_image_record(image)
-        db.commit()
-    finally:
-        db.close()
 
 
 @app.get("/")
@@ -66,13 +55,25 @@ def health(db: Session = Depends(get_db)) -> dict[str, str]:
 
 
 @app.get("/api/v1/auth/me")
-def get_auth_profile(auth: AuthInfo = Depends(require_api_auth())) -> dict[str, Any]:
+def get_auth_profile(auth: AuthInfo = Depends(require_api_auth(enforce_role_claim=False))) -> dict[str, Any]:
     return {"code": 200, "data": build_auth_profile(auth)}
 
 
 @app.get("/api/v1/auth/rbac-model")
-def get_rbac_model(_: AuthInfo = Depends(require_api_auth())) -> dict[str, Any]:
+def get_rbac_model(_: AuthInfo = Depends(require_api_auth(enforce_role_claim=False))) -> dict[str, Any]:
     return {"code": 200, "data": build_rbac_model_payload()}
+
+
+@app.get("/api/v1/audit-logs")
+def get_audit_logs(
+    limit: int = Query(default=50, ge=1, le=200),
+    action: str | None = Query(default=None),
+    resource_type: str | None = Query(default=None),
+    _: AuthInfo = Depends(require_api_auth('review:reports')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    items = list_audit_logs(db, limit=limit, action=action, resource_type=resource_type)
+    return {"code": 200, "data": [serialize_audit_log(item) for item in items]}
 
 
 @app.get("/api/v1/images")
@@ -99,7 +100,7 @@ async def upload_image(
     file: UploadFile = File(...),
     patient_id: str = Form(...),
     image_type: ImageType = Form(...),
-    _: AuthInfo = Depends(require_api_auth('upload:images')),
+    auth: AuthInfo = Depends(require_api_auth('upload:images')),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     image = build_image_record(
@@ -112,6 +113,8 @@ async def upload_image(
     db.flush()
 
     file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail='上传文件为空，请重新选择影像文件')
     stored_object = storage_service.save_upload(
         file_bytes=file_bytes,
         filename=file.filename or 'image.bin',
@@ -123,9 +126,54 @@ async def upload_image(
     image.storage_bucket = stored_object.bucket
     image.storage_object_key = stored_object.object_key
 
+    create_user_audit_log(
+        db,
+        auth=auth,
+        action='image.uploaded',
+        resource_type='image',
+        resource_id=image.image_id,
+        detail={
+            'patient_id': patient_id,
+            'image_type': image_type,
+            'filename': image.filename,
+            'storage_provider': image.storage_provider,
+        },
+    )
+
     db.commit()
     db.refresh(image)
-    asyncio.create_task(process_image_analysis(image.image_id))
+
+    try:
+        task = run_image_analysis.delay(image.image_id)
+    except Exception as exc:  # noqa: BLE001
+        image = get_image_or_404(db, image.image_id)
+        image.status = 'failed'
+        create_user_audit_log(
+            db,
+            auth=auth,
+            action='analysis.enqueue_failed',
+            resource_type='image',
+            resource_id=image.image_id,
+            detail={
+                'error': str(exc),
+            },
+        )
+        db.commit()
+        raise HTTPException(status_code=503, detail='分析任务队列不可用，请稍后重试') from exc
+
+    create_user_audit_log(
+        db,
+        auth=auth,
+        action='analysis.queued',
+        resource_type='image',
+        resource_id=image.image_id,
+        detail={
+            'task_id': task.id,
+            'patient_id': image.patient_id,
+            'image_type': image.image_type,
+        },
+    )
+    db.commit()
 
     return {
         "code": 200,
@@ -170,6 +218,19 @@ def review_report(
     report.status = payload.status
     if payload.modified_findings:
         report.image.detections = payload.modified_findings
+
+    create_user_audit_log(
+        db,
+        auth=auth,
+        action='report.finalized' if payload.status == 'finalized' else 'report.reviewed',
+        resource_type='report',
+        resource_id=report.report_id,
+        detail={
+            'image_id': report.image.image_id,
+            'report_status': payload.status,
+            'findings_modified': bool(payload.modified_findings),
+        },
+    )
 
     db.commit()
     db.refresh(report)

@@ -9,6 +9,20 @@ def env_flag(name: str, default: bool) -> bool:
     return value.lower() in {'1', 'true', 'yes', 'on'}
 
 
+def env_list(name: str, default: list[str]) -> list[str]:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return [item.strip() for item in value.split(',') if item.strip()]
+
+
+def env_int(name: str, default: int) -> int:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return int(value)
+
+
 BASE_DIR = Path(__file__).resolve().parents[1]
 UPLOAD_DIR = BASE_DIR / 'uploads'
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -28,6 +42,17 @@ LOGTO_ENDPOINT = os.getenv('LOGTO_ENDPOINT', 'http://127.0.0.1:3001')
 LOGTO_ISSUER = os.getenv('LOGTO_ISSUER', f"{LOGTO_ENDPOINT.rstrip('/')}/oidc")
 LOGTO_JWKS_URI = os.getenv('LOGTO_JWKS_URI', f'{LOGTO_ISSUER}/jwks')
 LOGTO_API_RESOURCE = os.getenv('LOGTO_API_RESOURCE', 'https://api.wisdom-tooth-ai.local')
+LOGTO_ROLE_CLAIM_NAMES = env_list('LOGTO_ROLE_CLAIM_NAMES', ['urn:logto:roles'])
+LOGTO_REQUIRE_ROLE_CLAIM = env_flag('LOGTO_REQUIRE_ROLE_CLAIM', False)
+
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://127.0.0.1:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', CELERY_BROKER_URL)
+CELERY_TASK_ALWAYS_EAGER = env_flag('CELERY_TASK_ALWAYS_EAGER', False)
+
+OLLAMA_ENABLED = env_flag('OLLAMA_ENABLED', True)
+OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://10.41.33.17:11434')
+OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'qwen3.5:9b')
+OLLAMA_TIMEOUT_SECONDS = env_int('OLLAMA_TIMEOUT_SECONDS', 120)
 
 ALLOWED_ORIGINS = [
     'http://localhost:5173',

@@ -9,14 +9,16 @@
  
 当前 MVP 聚焦文档中的主链路：
 
- 
- - 影像上传
- - AI 分析结果查询
- - 报告医生审核
- - WebSocket 分析事件演示
- - PostgreSQL 持久化存储
- - MinIO 文件存储
- - Logto 登录、JWT 鉴权与角色权限控制
+
+- 影像上传
+- AI 分析结果查询
+- 报告医生审核
+- WebSocket 分析事件演示
+- PostgreSQL 持久化存储
+- MinIO 文件存储
+- Logto 登录、JWT 鉴权与角色权限控制
+- Celery + Redis 后台分析任务
+- 本地 Ollama 多模态报告生成（失败时自动回退到内置 mock）
 
 ## 目录结构
 
@@ -58,6 +60,15 @@ docker compose up -d postgres
 DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/wisdom_tooth_ai
 ```
 
+本地 Ollama 配置也已写入 `.env.example`，默认示例为：
+
+```env
+OLLAMA_ENABLED=true
+OLLAMA_BASE_URL=http://10.41.33.17:11434
+OLLAMA_MODEL=qwen3.5:9b
+OLLAMA_TIMEOUT_SECONDS=120
+```
+
 ### 2. 启动后端
 
 ```bash
@@ -69,6 +80,12 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 建议在 `backend` 目录下执行 `uvicorn`。
+
+如果你要使用正式异步分析任务，还需要再开一个终端启动 Worker：
+
+```bash
+celery -A app.celery_app.celery_app worker --loglevel=info
+```
 
 ### 3. 启动前端
 
@@ -149,18 +166,22 @@ docker compose up --build
 - 后端已切换为 `PostgreSQL + SQLAlchemy` 持久化
 - 已引入 `Alembic` 管理数据库迁移
 - 上传文件已支持通过 `MinIO` 存储
-- AI 检测结果与报告内容为模拟生成
+- AI 分析任务已切换为 `Celery + Redis`
+- 已支持优先调用本地 `Ollama` 多模态模型生成检测结果与中文报告
+- 当 Ollama 不可达或返回异常时，会自动回退到内置 mock 分析结果
 - 前端已拆分为 `api / types / components` 结构
 - 分析详情支持基础影像预览
 - 已接入 `Logto OSS` 提供登录、JWT 校验与 RBAC
 - 前端已支持显示当前角色、权限菜单显隐与无权限提示页
 - 后端已提供当前访问画像与 RBAC 模型说明接口
+- 已支持优先读取 token 中的角色 claim，并在缺失时回退到基于 scope 的角色推断
+- 权限说明区域已包含角色来源、claim 摘要与菜单映射调试信息
+- 已提供审计日志表与关键动作留痕
 - 提供 `docker-compose.yml` 支持数据库、后端、前端一键启动
-- 仍然不包含真实模型推理、对象存储、鉴权与任务队列
 
 后续可以继续扩展：
 
-- MinIO 文件存储
-- Celery 异步分析任务
-- Ollama / 本地 LLM 报告生成
-- JWT + RBAC + 审计日志
+- 更精细的影像检测模型与分割结果可视化
+- 患者端/多租户角色扩展
+- 更完整的审计查询与导出能力
+- 更强的模型结果评估与人工复核流程

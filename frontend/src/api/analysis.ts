@@ -7,10 +7,15 @@ import type {
 } from "../types/analysis";
 
 export async function listImages(filters?: Partial<AnalysisFilters>) {
+  const params = Object.fromEntries(
+    Object.entries(filters ?? {}).filter(
+      ([, value]) => value !== "" && value !== undefined && value !== null,
+    ),
+  );
   const response = await http.get<{ code: number; data: AnalysisItem[] }>(
     "/api/v1/images",
     {
-      params: filters,
+      params,
     },
   );
   return response.data.data;

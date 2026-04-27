@@ -68,6 +68,10 @@ LOGTO_ENDPOINT=http://127.0.0.1:3001
 LOGTO_ISSUER=http://127.0.0.1:3001/oidc
 LOGTO_JWKS_URI=http://127.0.0.1:3001/oidc/jwks
 LOGTO_API_RESOURCE=https://api.wisdom-tooth-ai.local
+OLLAMA_ENABLED=true
+OLLAMA_BASE_URL=http://10.41.33.17:11434
+OLLAMA_MODEL=qwen3.5:9b
+OLLAMA_TIMEOUT_SECONDS=120
 ```
 
 然后先执行数据库迁移，再进入后端目录启动服务：
@@ -83,6 +87,14 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 建议你在 `backend` 目录下执行上面的 `uvicorn` 命令。
+
+如果你启用了正式异步分析任务，还需要单独启动 Celery Worker：
+
+```bash
+celery -A app.celery_app.celery_app worker --loglevel=info
+```
+
+当前版本会优先调用本地 Ollama 多模态模型生成检测结果和中文报告；如果模型不可达或返回异常，会自动回退到内置 mock 分析结果。
 
 ### 3. 启动前端
 
@@ -199,6 +211,20 @@ http://127.0.0.1:5173
 
 如果浏览器无法直接预览该文件类型，界面会提示你通过文件接口下载查看。
 
+### 4.1 调试上传接口
+
+如果你想手动验证上传接口，不要手写 multipart body，直接使用 `curl -F`：
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/images/upload" \
+  -H "Authorization: Bearer <your-access-token>" \
+  -F "file=@/path/to/head02.png" \
+  -F "patient_id=P-0001" \
+  -F "image_type=panoramic"
+```
+
+如果上传文件为空，后端会返回：`上传文件为空，请重新选择影像文件`。
+
 ### 5. 初始化 Logto 权限模型
 
 打开 Logto 管理台：
@@ -218,12 +244,35 @@ http://127.0.0.1:3002
   - `upload:images`
   - `review:reports`
   - `finalize:reports`
-- 创建角色：
+- 创建 roles：
   - `radiologist`
   - `doctor`
   - `chief_doctor`
 - 给角色授予对应 scope
 - 给测试用户授予角色
+
+当前系统内置的业务角色只有下面 3 个，并没有“病人”角色：
+
+- `radiologist`
+  - 中文含义：影像技师
+  - 权限：`read:images`、`upload:images`
+  - 用途：上传影像、查看分析记录和结果
+
+- `doctor`
+  - 中文含义：审核医生
+  - 权限：`read:images`、`review:reports`
+  - 用途：查看影像、提交医生审核意见
+
+- `chief_doctor`
+  - 中文含义：主任医生
+  - 权限：`read:images`、`review:reports`、`finalize:reports`
+  - 用途：查看影像、审核报告、正式确认报告
+
+说明：
+
+- 当前前端是“医生工作台”场景，不包含患者端功能。
+- 如果用户没有被分配以上任一角色，前端会显示“暂无工作台访问权限”。
+- 如果后续要支持患者端，需要单独设计新的角色、菜单和页面，不属于当前版本范围。
 
 前端登录后，页面会展示当前 access token 中的 scope 列表。
 
@@ -233,6 +282,8 @@ http://127.0.0.1:3002
 - 根据后端返回的菜单能力隐藏无权限模块
 - 在无权访问某模块时显示专门的无权限提示页
 - 在“权限说明”区域展示系统 RBAC 模型、角色与权限定义
+- 优先使用 access token 中可识别的角色 claim，缺失时再按 scopes 推断角色
+- 展示角色来源、角色 claim keys、claim 摘要和菜单映射，便于调试 Logto 配置
 
 相关接口：
 

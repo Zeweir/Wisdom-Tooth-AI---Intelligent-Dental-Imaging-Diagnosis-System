@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.models import ImageRecord, ReportRecord
+from app.ollama import OllamaError, generate_multimodal_analysis, is_ollama_enabled
 from app.schemas import ImageType
 
 
@@ -61,6 +62,81 @@ def build_report_content(patient_id: str, image_type: ImageType, detections: lis
     )
 
 
+def normalize_detection_payload(detections: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for item in detections:
+        bbox_value = item.get('bbox', [0, 0, 0, 0])
+        if not isinstance(bbox_value, list):
+            bbox_value = [0, 0, 0, 0]
+        bbox = []
+        for value in bbox_value[:4]:
+            try:
+                bbox.append(int(float(value)))
+            except (TypeError, ValueError):
+                bbox.append(0)
+        while len(bbox) < 4:
+            bbox.append(0)
+
+        try:
+            confidence = float(item.get('confidence', 0.5))
+        except (TypeError, ValueError):
+            confidence = 0.5
+
+        normalized.append(
+            {
+                'bbox': bbox,
+                'class': str(item.get('class', '待确认病灶')),
+                'confidence': min(1.0, max(0.0, confidence)),
+                'severity': str(item.get('severity', '待确认')),
+                'tooth_id': str(item.get('tooth_id', '未知牙位')),
+            }
+        )
+    return normalized
+
+
+def build_fallback_analysis(image: ImageRecord) -> dict[str, Any]:
+    detections = build_mock_detections(image.image_type)
+    return {
+        'detections': detections,
+        'report': build_report_content(image.patient_id, image.image_type, detections),
+        'summary': '使用内置规则生成的兜底分析结果。',
+        'source': 'mock_fallback',
+        'model': None,
+        'error': None,
+    }
+
+
+def generate_analysis_result(image: ImageRecord, image_bytes: bytes | None) -> dict[str, Any]:
+    fallback = build_fallback_analysis(image)
+    if not image_bytes or not is_ollama_enabled():
+        return fallback
+
+    try:
+        ollama_result = generate_multimodal_analysis(
+            image_bytes=image_bytes,
+            patient_id=image.patient_id,
+            image_type=image.image_type,
+            filename=image.filename,
+        )
+    except OllamaError as exc:
+        fallback['error'] = str(exc)
+        return fallback
+
+    detections = normalize_detection_payload(ollama_result.detections)
+    if not detections:
+        detections = fallback['detections']
+
+    report = ollama_result.report.strip() or build_report_content(image.patient_id, image.image_type, detections)
+    return {
+        'detections': detections,
+        'report': report,
+        'summary': ollama_result.summary,
+        'source': 'ollama',
+        'model': ollama_result.model,
+        'error': None,
+    }
+
+
 def serialize_analysis(image: ImageRecord) -> dict[str, Any]:
     if image.report is None:
         raise ValueError('image report relation must exist')
@@ -108,8 +184,9 @@ def build_image_record(patient_id: str, image_type: ImageType, filename: str, st
     return image
 
 
-def finalize_image_record(image: ImageRecord) -> None:
-    detections = build_mock_detections(image.image_type)
+def finalize_image_record(image: ImageRecord, *, image_bytes: bytes | None = None) -> dict[str, Any]:
+    analysis_result = generate_analysis_result(image, image_bytes)
+    detections = analysis_result['detections']
     image.status = 'completed'
     image.detections = detections
     image.segmentation_url = None
@@ -119,5 +196,6 @@ def finalize_image_record(image: ImageRecord) -> None:
             doctor_review=None,
             status='processing',
         )
-    image.report.content = build_report_content(image.patient_id, image.image_type, detections)
+    image.report.content = analysis_result['report']
     image.report.status = 'ai_generated'
+    return analysis_result
