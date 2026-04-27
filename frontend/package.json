@@ -1,0 +1,24 @@
+{
+  "name": "wisdom-tooth-ai-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@logto/vue": "^3.0.11",
+    "axios": "^1.7.7",
+    "element-plus": "^2.9.1",
+    "vue": "^3.5.12"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "@vitejs/plugin-vue": "^5.2.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "vue-tsc": "^2.1.10"
+  }
+}

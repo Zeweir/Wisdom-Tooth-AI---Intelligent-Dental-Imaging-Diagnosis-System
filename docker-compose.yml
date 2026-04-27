@@ -1,0 +1,104 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: wisdom-tooth-ai-postgres
+    environment:
+      POSTGRES_DB: wisdom_tooth_ai
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d wisdom_tooth_ai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  logto-postgres:
+    image: postgres:16
+    container_name: wisdom-tooth-ai-logto-postgres
+    environment:
+      POSTGRES_DB: logto
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: p0stgr3s
+    ports:
+      - "5433:5432"
+    volumes:
+      - logto_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d logto"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    container_name: wisdom-tooth-ai-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  logto:
+    image: svhd/logto:latest
+    container_name: wisdom-tooth-ai-logto
+    entrypoint: ["sh", "-c", "npm run cli db seed -- --swe && npm start"]
+    environment:
+      TRUST_PROXY_HEADER: 1
+      DB_URL: postgres://postgres:p0stgr3s@logto-postgres:5432/logto
+      ENDPOINT: http://localhost:3001
+      ADMIN_ENDPOINT: http://localhost:3002
+    ports:
+      - "3001:3001"
+      - "3002:3002"
+    depends_on:
+      logto-postgres:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: ./backend
+    container_name: wisdom-tooth-ai-backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/wisdom_tooth_ai
+      STORAGE_PROVIDER: minio
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: wisdom-tooth-images
+      MINIO_SECURE: false
+      LOGTO_ENDPOINT: http://localhost:3001
+      LOGTO_ISSUER: http://localhost:3001/oidc
+      LOGTO_JWKS_URI: http://logto:3001/oidc/jwks
+      LOGTO_API_RESOURCE: https://api.wisdom-tooth-ai.local
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      logto:
+        condition: service_started
+      minio:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: wisdom-tooth-ai-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+      - logto
+
+volumes:
+  postgres_data:
+  logto_postgres_data:
+  minio_data:

@@ -1,0 +1,8 @@
+fastapi==0.115.5
+uvicorn[standard]==0.32.0
+python-multipart==0.0.17
+sqlalchemy==2.0.36
+psycopg[binary]==3.2.3
+alembic==1.14.0
+minio==7.2.12
+pyjwt[crypto]==2.10.1

@@ -1,0 +1,176 @@
+:root {
+  color: #1f2937;
+  background: #f4f7fb;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #eef4ff 0%, #f8fbff 100%);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+#app {
+  width: 100%;
+}
+
+.page-shell {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 32px 20px 48px;
+}
+
+.hero-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 24px;
+  padding: 28px;
+  margin-bottom: 24px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.06);
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #2563eb;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.hero-card h1 {
+  margin: 0;
+  font-size: 32px;
+}
+
+.hero-desc {
+  margin: 12px 0 0;
+  color: #475569;
+}
+
+.grid-layout {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.detail-layout {
+  grid-template-columns: 1fr 1fr;
+}
+
+.panel {
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-weight: 700;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.event-box,
+.report-box {
+  margin-top: 24px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.sub-title {
+  margin-bottom: 12px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.record-item {
+  border: 1px solid #dbe3f0;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 14px 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.record-item:hover,
+.record-item.active {
+  border-color: #2563eb;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
+}
+
+.record-main,
+.record-meta,
+.actions,
+.summary-row {
+  display: flex;
+  align-items: center;
+}
+
+.record-main {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.record-main span {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.record-meta {
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.summary-row {
+  gap: 16px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.actions {
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+@media (max-width: 1024px) {
+  .grid-layout,
+  .detail-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-card {
+    flex-direction: column;
+  }
+}
