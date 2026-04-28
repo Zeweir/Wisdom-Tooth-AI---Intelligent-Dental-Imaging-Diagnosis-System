@@ -40,8 +40,31 @@ export interface AnalysisFilters {
   report_status: "" | ReportStatus;
 }
 
+export interface PaginationMeta {
+  limit: number;
+  offset: number;
+  total: number;
+}
+
 export interface ReportReviewPayload {
   doctor_review: string;
   modified_findings: Detection[];
   status: Extract<ReportStatus, "doctor_reviewed" | "finalized">;
+}
+
+export interface DashboardSummary {
+  total_images: number;
+  processing_images: number;
+  completed_images: number;
+  detection_count: number;
+  average_confidence: number;
+  report_status_counts: Record<ReportStatus, number>;
+  image_type_counts: Record<AnalysisItem["image_type"], number>;
+  audit_event_count: number;
+  latest_case: AnalysisItem | null;
+}
+
+export interface PaginatedAnalysisResult {
+  items: AnalysisItem[];
+  meta: PaginationMeta;
 }

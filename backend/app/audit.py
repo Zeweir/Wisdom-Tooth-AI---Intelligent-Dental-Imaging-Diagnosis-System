@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.auth import AuthInfo
@@ -97,12 +97,39 @@ def list_audit_logs(
     db: Session,
     *,
     limit: int = 50,
+    offset: int = 0,
     action: str | None = None,
     resource_type: str | None = None,
+    resource_id: str | None = None,
+    actor_sub: str | None = None,
 ) -> list[AuditLogRecord]:
-    statement = select(AuditLogRecord).order_by(AuditLogRecord.created_at.desc()).limit(limit)
+    statement = select(AuditLogRecord).order_by(AuditLogRecord.created_at.desc()).offset(offset).limit(limit)
     if action:
         statement = statement.where(AuditLogRecord.action == action)
     if resource_type:
         statement = statement.where(AuditLogRecord.resource_type == resource_type)
+    if resource_id:
+        statement = statement.where(AuditLogRecord.resource_id == resource_id)
+    if actor_sub:
+        statement = statement.where(AuditLogRecord.actor_sub.ilike(f"%{actor_sub}%"))
     return db.execute(statement).scalars().all()
+
+
+def count_audit_logs(
+    db: Session,
+    *,
+    action: str | None = None,
+    resource_type: str | None = None,
+    resource_id: str | None = None,
+    actor_sub: str | None = None,
+) -> int:
+    statement = select(func.count()).select_from(AuditLogRecord)
+    if action:
+        statement = statement.where(AuditLogRecord.action == action)
+    if resource_type:
+        statement = statement.where(AuditLogRecord.resource_type == resource_type)
+    if resource_id:
+        statement = statement.where(AuditLogRecord.resource_id == resource_id)
+    if actor_sub:
+        statement = statement.where(AuditLogRecord.actor_sub.ilike(f"%{actor_sub}%"))
+    return db.scalar(statement) or 0

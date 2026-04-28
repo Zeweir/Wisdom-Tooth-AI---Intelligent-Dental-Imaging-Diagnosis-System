@@ -3,16 +3,26 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Response, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
-from app.audit import create_user_audit_log, list_audit_logs, serialize_audit_log
+from app.audit import count_audit_logs, create_user_audit_log, list_audit_logs, serialize_audit_log
 from app.auth import AuthInfo, authorize_websocket, build_auth_profile, build_rbac_model_payload, ensure_scopes, require_api_auth
 from app.config import ALLOWED_ORIGINS
 from app.database import SessionLocal, get_db
-from app.models import ImageRecord, ReportRecord
-from app.schemas import ImageType, ReportReviewRequest, ReportStatus
-from app.services import build_image_record, serialize_analysis
+from app.models import AuditLogRecord, ImageRecord, ReportRecord
+from app.schemas import (
+    AnalysisListResponse,
+    AnalysisResponse,
+    AuditLogListResponse,
+    DashboardSummaryResponse,
+    ImageType,
+    ReportReviewRequest,
+    ReportReviewResponse,
+    ReportStatus,
+    UploadApiResponse,
+)
+from app.services import build_dashboard_summary, build_image_record, serialize_analysis
 from app.storage import storage_service
 from app.tasks import run_image_analysis
 
@@ -64,38 +74,75 @@ def get_rbac_model(_: AuthInfo = Depends(require_api_auth(enforce_role_claim=Fal
     return {"code": 200, "data": build_rbac_model_payload()}
 
 
-@app.get("/api/v1/audit-logs")
+@app.get("/api/v1/audit-logs", response_model=AuditLogListResponse)
 def get_audit_logs(
     limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     action: str | None = Query(default=None),
     resource_type: str | None = Query(default=None),
+    resource_id: str | None = Query(default=None),
+    actor_sub: str | None = Query(default=None),
     _: AuthInfo = Depends(require_api_auth('review:reports')),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    items = list_audit_logs(db, limit=limit, action=action, resource_type=resource_type)
-    return {"code": 200, "data": [serialize_audit_log(item) for item in items]}
+    items = list_audit_logs(
+        db,
+        limit=limit,
+        offset=offset,
+        action=action,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        actor_sub=actor_sub,
+    )
+    total = count_audit_logs(
+        db,
+        action=action,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        actor_sub=actor_sub,
+    )
+    return {"code": 200, "data": [serialize_audit_log(item) for item in items], "meta": {"limit": limit, "offset": offset, "total": total}}
 
 
-@app.get("/api/v1/images")
+@app.get("/api/v1/dashboard/summary", response_model=DashboardSummaryResponse)
+def get_dashboard_summary(
+    _: AuthInfo = Depends(require_api_auth('read:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    images = db.execute(
+        select(ImageRecord).options(joinedload(ImageRecord.report)).order_by(ImageRecord.created_at.desc())
+    ).unique().scalars().all()
+    audit_count = db.scalar(select(func.count()).select_from(AuditLogRecord)) or 0
+    return {"code": 200, "data": build_dashboard_summary(images, audit_count)}
+
+
+@app.get("/api/v1/images", response_model=AnalysisListResponse)
 def list_images(
     patient_id: str | None = Query(default=None),
     image_type: ImageType | None = Query(default=None),
     report_status: ReportStatus | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     _: AuthInfo = Depends(require_api_auth('read:images')),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     statement = select(ImageRecord).options(joinedload(ImageRecord.report)).order_by(ImageRecord.created_at.desc())
+    count_statement = select(func.count()).select_from(ImageRecord)
     if patient_id:
         statement = statement.where(ImageRecord.patient_id.ilike(f"%{patient_id}%"))
+        count_statement = count_statement.where(ImageRecord.patient_id.ilike(f"%{patient_id}%"))
     if image_type:
         statement = statement.where(ImageRecord.image_type == image_type)
+        count_statement = count_statement.where(ImageRecord.image_type == image_type)
     if report_status:
         statement = statement.join(ImageRecord.report).where(ReportRecord.status == report_status)
-    items = db.execute(statement).unique().scalars().all()
-    return {"code": 200, "data": [serialize_analysis(item) for item in items]}
+        count_statement = count_statement.join(ImageRecord.report).where(ReportRecord.status == report_status)
+    total = db.scalar(count_statement) or 0
+    items = db.execute(statement.offset(offset).limit(limit)).unique().scalars().all()
+    return {"code": 200, "data": [serialize_analysis(item) for item in items], "meta": {"limit": limit, "offset": offset, "total": total}}
 
 
-@app.post("/api/v1/images/upload")
+@app.post("/api/v1/images/upload", response_model=UploadApiResponse)
 async def upload_image(
     file: UploadFile = File(...),
     patient_id: str = Form(...),
@@ -185,7 +232,7 @@ async def upload_image(
     }
 
 
-@app.get("/api/v1/analysis/{image_id}")
+@app.get("/api/v1/analysis/{image_id}", response_model=AnalysisResponse)
 def get_analysis(image_id: str, _: AuthInfo = Depends(require_api_auth('read:images')), db: Session = Depends(get_db)) -> dict[str, Any]:
     image = get_image_or_404(db, image_id)
     return {"code": 200, "data": serialize_analysis(image)}
@@ -198,7 +245,7 @@ def get_image_file(image_id: str, _: AuthInfo = Depends(require_api_auth('read:i
     return Response(content=stored.content, media_type=stored.media_type)
 
 
-@app.put("/api/v1/reports/{report_id}/review")
+@app.put("/api/v1/reports/{report_id}/review", response_model=ReportReviewResponse)
 def review_report(
     report_id: str,
     payload: ReportReviewRequest,

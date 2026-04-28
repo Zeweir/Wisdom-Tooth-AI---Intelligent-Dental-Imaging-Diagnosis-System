@@ -152,11 +152,13 @@ docker compose up --build
 
 - `GET /api/v1/auth/me`
 - `GET /api/v1/auth/rbac-model`
+- `GET /api/v1/dashboard/summary`
 - `POST /api/v1/images/upload`
 - `GET /api/v1/images`
 - `GET /api/v1/analysis/{image_id}`
 - `GET /api/v1/images/{image_id}/file`
 - `PUT /api/v1/reports/{report_id}/review`
+- `GET /api/v1/audit-logs`
 - `WS /ws/analysis/{image_id}`
 
 ## 当前实现说明
@@ -177,6 +179,8 @@ docker compose up --build
 - 已支持优先读取 token 中的角色 claim，并在缺失时回退到基于 scope 的角色推断
 - 权限说明区域已包含角色来源、claim 摘要与菜单映射调试信息
 - 已提供审计日志表与关键动作留痕
+- 已支持影像列表、审计日志分页查询与工作台摘要统计
+- 前端已支持报告 HTML 导出、浏览器打印预览和影像检测框叠加展示
 - 提供 `docker-compose.yml` 支持数据库、后端、前端一键启动
 
 后续可以继续扩展：

@@ -10,3 +10,21 @@ export interface AuditLogItem {
   detail: Record<string, unknown>;
   created_at: string;
 }
+
+export interface AuditLogFilters {
+  action: string;
+  resource_type: string;
+  resource_id: string;
+  actor_sub: string;
+}
+
+export interface AuditLogPagination {
+  limit: number;
+  offset: number;
+  total: number;
+}
+
+export interface PaginatedAuditLogResult {
+  items: AuditLogItem[];
+  meta: AuditLogPagination;
+}

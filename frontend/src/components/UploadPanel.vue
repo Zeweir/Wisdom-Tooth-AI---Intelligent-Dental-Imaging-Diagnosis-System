@@ -51,6 +51,13 @@ function handleSubmit() {
     </template>
 
     <el-form label-position="top">
+      <div class="upload-dropzone">
+        <div class="panel-header">
+          <span>病例影像接入</span>
+          <el-tag type="success">支持 DICOM / PNG / JPG</el-tag>
+        </div>
+        <p class="upload-hint">建议上传脱敏后的口腔影像文件，系统会自动进入 AI 分析与报告生成流程。</p>
+      </div>
       <el-form-item label="患者 ID">
         <el-input v-model="form.patientId" placeholder="例如 P-0001" />
       </el-form-item>
@@ -66,11 +73,17 @@ function handleSubmit() {
           <el-button type="primary" plain :disabled="!props.canUpload">选择文件</el-button>
         </el-upload>
       </el-form-item>
-      <el-button type="primary" :loading="loading" :disabled="!props.canUpload" @click="handleSubmit">上传并分析</el-button>
+      <div class="quick-action-row">
+        <el-button type="primary" :loading="loading" :disabled="!props.canUpload" @click="handleSubmit">上传并分析</el-button>
+        <el-tag v-if="uploadFile" type="info">{{ uploadFile.name }}</el-tag>
+      </div>
     </el-form>
 
     <div class="event-box">
-      <div class="sub-title">实时分析事件</div>
+      <div class="panel-header">
+        <span>实时分析事件</span>
+        <el-tag type="info">{{ socketEvents.length }} 条</el-tag>
+      </div>
       <el-empty v-if="socketEvents.length === 0" description="上传后这里会显示 WebSocket 事件" />
       <el-timeline v-else>
         <el-timeline-item v-for="event in socketEvents" :key="event" :timestamp="'实时'">

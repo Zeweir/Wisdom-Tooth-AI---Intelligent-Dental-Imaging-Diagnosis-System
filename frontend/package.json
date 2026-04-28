@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "type-check": "vue-tsc --noEmit",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview"
   },
@@ -12,7 +13,8 @@
     "@logto/vue": "^3.0.11",
     "axios": "^1.7.7",
     "element-plus": "^2.9.1",
-    "vue": "^3.5.12"
+    "vue": "^3.5.12",
+    "vue-router": "^4.5.1"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",

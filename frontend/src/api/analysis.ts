@@ -2,28 +2,51 @@ import { apiBaseUrl, http } from "./http";
 import type {
   AnalysisFilters,
   AnalysisItem,
+  DashboardSummary,
   Detection,
+  PaginatedAnalysisResult,
   ReportReviewPayload,
 } from "../types/analysis";
 
-export async function listImages(filters?: Partial<AnalysisFilters>) {
+export async function listImages(
+  filters?: Partial<AnalysisFilters>,
+  pagination?: { limit?: number; offset?: number },
+): Promise<PaginatedAnalysisResult> {
   const params = Object.fromEntries(
-    Object.entries(filters ?? {}).filter(
+    Object.entries({ ...(filters ?? {}), ...(pagination ?? {}) }).filter(
       ([, value]) => value !== "" && value !== undefined && value !== null,
     ),
   );
-  const response = await http.get<{ code: number; data: AnalysisItem[] }>(
+  const response = await http.get<{
+    code: number;
+    data: AnalysisItem[];
+    meta?: { limit: number; offset: number; total: number };
+  }>(
     "/api/v1/images",
     {
       params,
     },
   );
-  return response.data.data;
+  return {
+    items: response.data.data,
+    meta: response.data.meta ?? {
+      limit: pagination?.limit ?? response.data.data.length,
+      offset: pagination?.offset ?? 0,
+      total: response.data.data.length,
+    },
+  };
 }
 
 export async function getAnalysis(imageId: string) {
   const response = await http.get<{ code: number; data: AnalysisItem }>(
     `/api/v1/analysis/${imageId}`,
+  );
+  return response.data.data;
+}
+
+export async function getDashboardSummary() {
+  const response = await http.get<{ code: number; data: DashboardSummary }>(
+    "/api/v1/dashboard/summary",
   );
   return response.data.data;
 }

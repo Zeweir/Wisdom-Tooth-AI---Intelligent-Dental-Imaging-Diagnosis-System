@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import type { AnalysisFilters, AnalysisItem } from '../types/analysis'
+import { computed } from 'vue'
+import type { AnalysisFilters, AnalysisItem, PaginationMeta } from '../types/analysis'
+import { getImageTypeLabel, getReportStatusLabel, getReportStatusTagType } from '../utils/display'
 
 const props = defineProps<{
   filters: AnalysisFilters
   records: AnalysisItem[]
+  pagination: PaginationMeta
   selectedImageId: string
 }>()
 
@@ -12,7 +15,12 @@ const emit = defineEmits<{
   refresh: []
   applyFilters: []
   resetFilters: []
+  pageChange: [page: number]
+  pageSizeChange: [pageSize: number]
 }>()
+
+const finalizedCount = computed(() => props.records.filter((record) => record.report.status === 'finalized').length)
+const pendingCount = computed(() => props.records.filter((record) => record.report.status !== 'finalized').length)
 </script>
 
 <template>
@@ -23,6 +31,21 @@ const emit = defineEmits<{
         <el-button text @click="emit('refresh')">刷新</el-button>
       </div>
     </template>
+
+    <div class="medical-signal-row">
+      <div class="clinical-metric">
+        <div class="metric-value">{{ props.records.length }}</div>
+        <div class="metric-label">当前记录</div>
+      </div>
+      <div class="clinical-metric">
+        <div class="metric-value">{{ pendingCount }}</div>
+        <div class="metric-label">待确认</div>
+      </div>
+      <div class="clinical-metric">
+        <div class="metric-value">{{ finalizedCount }}</div>
+        <div class="metric-label">正式报告</div>
+      </div>
+    </div>
 
     <el-form label-position="top">
       <el-form-item label="患者 ID">
@@ -61,13 +84,27 @@ const emit = defineEmits<{
       >
         <div class="record-main">
           <strong>{{ record.patient_id }}</strong>
-          <span>{{ record.filename }}</span>
+          <span>{{ getImageTypeLabel(record.image_type) }}</span>
         </div>
+        <div class="record-secondary">{{ record.filename }}</div>
         <div class="record-meta">
-          <el-tag size="small">{{ record.image_type }}</el-tag>
-          <el-tag size="small" type="success">{{ record.report.status }}</el-tag>
+          <el-tag size="small">{{ getImageTypeLabel(record.image_type) }}</el-tag>
+          <el-tag size="small" :type="getReportStatusTagType(record.report.status)">{{ getReportStatusLabel(record.report.status) }}</el-tag>
         </div>
       </button>
+    </div>
+
+    <div class="pagination-row">
+      <el-pagination
+        background
+        layout="total, sizes, prev, pager, next"
+        :current-page="Math.floor(props.pagination.offset / props.pagination.limit) + 1"
+        :page-size="props.pagination.limit"
+        :page-sizes="[5, 10, 20, 50]"
+        :total="props.pagination.total"
+        @current-change="emit('pageChange', $event)"
+        @size-change="emit('pageSizeChange', $event)"
+      />
     </div>
   </el-card>
 </template>

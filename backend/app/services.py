@@ -162,6 +162,48 @@ def serialize_analysis(image: ImageRecord) -> dict[str, Any]:
     }
 
 
+def build_dashboard_summary(images: list[ImageRecord], audit_count: int) -> dict[str, Any]:
+    report_status_counts = {
+        'processing': 0,
+        'ai_generated': 0,
+        'doctor_reviewed': 0,
+        'finalized': 0,
+    }
+    image_type_counts = {
+        'panoramic': 0,
+        'periapical': 0,
+        'cbct': 0,
+    }
+    detection_count = 0
+    confidence_total = 0.0
+    confidence_count = 0
+
+    for image in images:
+        image_type_counts[image.image_type] = image_type_counts.get(image.image_type, 0) + 1
+        if image.report is not None:
+            report_status_counts[image.report.status] = report_status_counts.get(image.report.status, 0) + 1
+        for detection in image.detections or []:
+            detection_count += 1
+            try:
+                confidence_total += float(detection.get('confidence', 0))
+                confidence_count += 1
+            except (TypeError, ValueError):
+                continue
+
+    latest_image = images[0] if images else None
+    return {
+        'total_images': len(images),
+        'processing_images': sum(1 for image in images if image.status == 'processing'),
+        'completed_images': sum(1 for image in images if image.status == 'completed'),
+        'detection_count': detection_count,
+        'average_confidence': round(confidence_total / confidence_count, 4) if confidence_count else 0,
+        'report_status_counts': report_status_counts,
+        'image_type_counts': image_type_counts,
+        'audit_event_count': audit_count,
+        'latest_case': serialize_analysis(latest_image) if latest_image and latest_image.report else None,
+    }
+
+
 def build_pending_report_content(patient_id: str, image_type: ImageType) -> str:
     return f'患者 {patient_id} 的{image_type}影像已上传，AI 正在分析中，请稍候查看结果。'
 
