@@ -14,11 +14,43 @@ const applyAuditFilters = workbench.applyAuditFilters
 const resetAuditFilters = workbench.resetAuditFilters
 const handleAuditPageChange = workbench.handleAuditPageChange
 const handleAuditPageSizeChange = workbench.handleAuditPageSizeChange
+const quickAuditFilters = [
+  { label: '报告审核', action: 'report.reviewed', resourceType: 'report' },
+  { label: '正式确认', action: 'report.finalized', resourceType: 'report' },
+  { label: '数据集导入', action: 'dataset_import.created', resourceType: 'dataset_import' },
+  { label: '患者更新', action: 'patient.updated', resourceType: 'patient' },
+  { label: '影像上传', action: 'image.uploaded', resourceType: 'image' },
+]
 const latestAuditLogs = computed(() => auditLogs.value.slice(0, 5).map((log, index) => ({
   ...log,
   index: String(index + 1).padStart(2, '0'),
-  detailText: JSON.stringify(log.detail)
+  detailText: JSON.stringify(log.detail),
+  actionLabel: getAuditActionLabel(log.action)
 })))
+
+function getAuditActionLabel(action: string) {
+  const labels: Record<string, string> = {
+    'report.reviewed': '报告审核',
+    'report.finalized': '正式确认',
+    'dataset_import.created': '数据导入',
+    'dataset_import.split': '训练集划分',
+    'dataset.seeded': '公开清单初始化',
+    'dataset.created': '数据集登记',
+    'dataset.updated': '数据集更新',
+    'patient.created': '新建患者',
+    'patient.updated': '患者更新',
+    'image.uploaded': '影像上传',
+  }
+  return labels[action] ?? action
+}
+
+async function applyQuickAuditFilter(item: { action: string; resourceType: string }) {
+  auditFilters.value.action = item.action
+  auditFilters.value.resource_type = item.resourceType
+  auditFilters.value.resource_id = ''
+  auditFilters.value.actor_sub = ''
+  await applyAuditFilters()
+}
 
 onMounted(async () => {
   await refreshAuditLogs()
@@ -57,7 +89,7 @@ onMounted(async () => {
             <div class="audit-card-header">
               <div class="audit-icon">{{ log.index }}</div>
               <div class="audit-main">
-                <strong>{{ log.action }}</strong>
+                <strong>{{ log.actionLabel }}</strong>
                 <div class="audit-time">{{ log.created_at }}</div>
               </div>
               <el-tag type="success">{{ log.resource_type }}</el-tag>
@@ -111,6 +143,17 @@ onMounted(async () => {
       </template>
 
       <el-form class="audit-filter-form" label-position="top">
+        <div class="audit-quick-filters">
+          <span>快捷筛选</span>
+          <el-button
+            v-for="item in quickAuditFilters"
+            :key="item.action"
+            plain
+            @click="applyQuickAuditFilter(item)"
+          >
+            {{ item.label }}
+          </el-button>
+        </div>
         <el-form-item label="动作">
           <el-input v-model="auditFilters.action" placeholder="例如 image.uploaded" clearable />
         </el-form-item>
@@ -119,6 +162,9 @@ onMounted(async () => {
             <el-option label="全部" value="" />
             <el-option label="影像 image" value="image" />
             <el-option label="报告 report" value="report" />
+            <el-option label="患者 patient" value="patient" />
+            <el-option label="数据集 dataset" value="dataset" />
+            <el-option label="数据导入 dataset_import" value="dataset_import" />
           </el-select>
         </el-form-item>
         <el-form-item label="资源 ID">

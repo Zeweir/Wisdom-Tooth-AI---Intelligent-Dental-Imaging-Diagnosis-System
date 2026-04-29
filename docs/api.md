@@ -134,6 +134,7 @@
 - `GET /api/v1/analysis/{image_id}`
 - 需要 `read:images`。
 - 返回单个影像分析详情。
+- 前端工作站支持通过 `/workspace?image_id=<image_id>` 直接打开该影像分析详情，该能力复用本接口，不新增后端路由。
 
 - `GET /api/v1/images/{image_id}/file`
 - 需要 `read:images`。
@@ -145,6 +146,7 @@
 - 需要 `review:reports`；正式确认还需要 `finalize:reports`。
 - Body：`doctor_review`、`modified_findings`、`status`。
 - `status` 可为 `doctor_reviewed` 或 `finalized`。
+- 患者档案中的报告预览复用影像详情中的 `report.content`、`report.doctor_review`、`report.status` 和检测结果，不新增报告预览接口。
 
 ## 审计日志
 
@@ -152,6 +154,7 @@
 - 需要 `review:reports`。
 - Query：`limit`、`offset`、`action`、`resource_type`、`resource_id`、`actor_sub`。
 - 返回分页后的审计日志。
+- 前端审计中心提供报告审核、正式确认、数据集导入、患者更新、影像上传等快捷筛选，本质仍是填充上述 Query 参数。
 
 ## WebSocket
 

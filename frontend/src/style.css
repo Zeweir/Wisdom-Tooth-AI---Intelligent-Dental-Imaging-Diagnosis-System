@@ -971,6 +971,32 @@ h3 {
   border-left: 4px solid rgba(8, 145, 178, 0.28);
 }
 
+.patient-report-summary {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid #edf5f7;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.patient-report-summary strong {
+  color: var(--medical-ink);
+  font-size: 13px;
+}
+
+.patient-report-summary span {
+  color: var(--medical-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.report-preview-stack {
+  display: grid;
+  gap: 14px;
+}
+
 .simple-step-list div {
   display: grid;
   gap: 4px;
@@ -1105,6 +1131,24 @@ h3 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
   align-items: end;
+}
+
+.audit-quick-filters {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 10px;
+  border: 1px solid #edf5f7;
+  border-radius: 14px;
+  background: #fbfdfe;
+}
+
+.audit-quick-filters span {
+  color: var(--medical-muted);
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .audit-filter-actions {

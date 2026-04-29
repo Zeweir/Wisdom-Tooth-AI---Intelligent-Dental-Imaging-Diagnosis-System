@@ -23,7 +23,9 @@ const loading = ref(false)
 const imagesLoading = ref(false)
 const keyword = ref('')
 const dialogVisible = ref(false)
+const reportDrawerVisible = ref(false)
 const editingPatient = ref<PatientRecord | null>(null)
+const previewReport = ref<AnalysisItem | null>(null)
 const pagination = ref<PaginationMeta>({ limit: 10, offset: 0, total: 0 })
 const imagePagination = ref<PaginationMeta>({ limit: 6, offset: 0, total: 0 })
 
@@ -39,6 +41,13 @@ const form = reactive<PatientFormPayload>({
 const selectedPatient = computed(() => patients.value.find((item) => item.patient_id === selectedPatientId.value) ?? null)
 const patientTitle = computed(() => selectedPatient.value ? `${selectedPatient.value.name} (${selectedPatient.value.patient_id})` : '选择患者查看病例')
 const latestImageLabel = computed(() => selectedPatient.value?.latest_image_at ? new Date(selectedPatient.value.latest_image_at).toLocaleString() : '暂无影像')
+const previewReportStatusLabel = computed(() => previewReport.value ? getReportStatusLabel(previewReport.value.report.status) : '')
+const previewReportStatusType = computed(() => previewReport.value ? getReportStatusTagType(previewReport.value.report.status) : 'info')
+
+function openReportPreview(image: AnalysisItem) {
+  previewReport.value = image
+  reportDrawerVisible.value = true
+}
 
 function resetForm() {
   form.patient_id = ''
@@ -296,6 +305,14 @@ onMounted(async () => {
               </div>
               <div class="record-meta">
                 <span class="timeline-meta-text">{{ image.detections.length }} 个病灶 / {{ new Date(image.created_at).toLocaleString() }}</span>
+                <span class="timeline-meta-text">更新 {{ new Date(image.updated_at).toLocaleString() }}</span>
+              </div>
+              <div class="patient-report-summary">
+                <strong>医生意见</strong>
+                <span>{{ image.report.doctor_review || (image.report.status === 'processing' ? '报告仍在生成中' : '暂无医生审核意见') }}</span>
+              </div>
+              <div class="record-meta">
+                <el-button text @click="openReportPreview(image)">查看报告</el-button>
                 <RouterLink
                   :to="{ path: '/workspace', query: { image_id: image.image_id } }"
                   class="el-button el-button--primary is-plain"
@@ -352,5 +369,47 @@ onMounted(async () => {
         <el-button type="primary" :disabled="!canUpload" @click="submitPatient">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-drawer v-model="reportDrawerVisible" title="报告预览" size="560px">
+      <el-empty v-if="!previewReport" description="请选择一条病例" />
+      <div v-else class="report-preview-stack">
+        <div class="panel-header">
+          <span>{{ previewReport.patient?.name ?? previewReport.patient_id }}</span>
+          <el-tag :type="previewReportStatusType">{{ previewReportStatusLabel }}</el-tag>
+        </div>
+        <div class="patient-note-box">
+          <strong>患者编号</strong>
+          <span>{{ previewReport.patient_id }}</span>
+          <strong>影像类型</strong>
+          <span>{{ getImageTypeLabel(previewReport.image_type) }}</span>
+          <strong>影像文件</strong>
+          <span>{{ previewReport.filename }}</span>
+          <strong>更新时间</strong>
+          <span>{{ new Date(previewReport.updated_at).toLocaleString() }}</span>
+        </div>
+        <article class="report-box clinical-report-draft">
+          <div class="panel-header">
+            <span>AI 报告草稿</span>
+            <el-tag type="info">{{ previewReport.report.content.length }} 字</el-tag>
+          </div>
+          <p>{{ previewReport.report.content || '暂无报告内容' }}</p>
+        </article>
+        <article class="report-box">
+          <div class="panel-header">
+            <span>医生审核意见</span>
+            <el-tag type="success">{{ previewReport.detections.length }} 个病灶</el-tag>
+          </div>
+          <p class="clinical-copy">{{ previewReport.report.doctor_review || '暂无医生审核意见' }}</p>
+        </article>
+        <div class="quick-action-row">
+          <RouterLink
+            :to="{ path: '/workspace', query: { image_id: previewReport.image_id } }"
+            class="el-button el-button--primary"
+          >
+            <span>到工作站继续处理</span>
+          </RouterLink>
+        </div>
+      </div>
+    </el-drawer>
   </div>
 </template>
