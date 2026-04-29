@@ -86,44 +86,13 @@ onBeforeUnmount(() => {
 
     <el-empty v-if="!currentRecord" description="请选择一条分析记录" />
     <template v-else>
-      <div class="summary-row">
-        <el-statistic title="病灶数" :value="currentRecord.detections.length" />
-        <el-statistic title="当前状态" :value="currentStatusLabel" />
-        <el-statistic title="影像类型" :value="currentImageTypeLabel" />
-        <el-statistic title="平均置信度" :value="`${averageConfidence}%`" />
-      </div>
-
-      <div class="diagnosis-steps">
-        <div class="diagnosis-step">
-          <strong>影像读取</strong>
-          <span>已完成文件载入和病例绑定</span>
-        </div>
-        <div class="diagnosis-step">
-          <strong>AI 判读</strong>
-          <span>{{ currentRecord.detections.length > 0 ? '已生成结构化检测结果' : '暂无检测结果' }}</span>
-        </div>
-        <div class="diagnosis-step">
-          <strong>医生确认</strong>
-          <span>{{ currentStatusLabel }}</span>
-        </div>
-      </div>
-
-      <div class="report-box">
-        <div class="sub-title">病例摘要</div>
-        <div class="overview-list">
-          <div class="overview-list-item">
-            <strong>患者编号</strong>
-            <span>{{ currentRecord.patient_id }}</span>
-          </div>
-          <div class="overview-list-item">
-            <strong>影像文件</strong>
-            <span>{{ currentRecord.filename }}</span>
-          </div>
-          <div class="overview-list-item">
-            <strong>报告状态</strong>
-            <span>{{ currentStatusLabel }}</span>
-          </div>
-        </div>
+      <div class="analysis-meta-row">
+        <span>患者 {{ currentRecord.patient?.name ?? currentRecord.patient_id }}</span>
+        <span v-if="currentRecord.patient?.name">编号 {{ currentRecord.patient_id }}</span>
+        <span v-if="currentRecord.patient?.age">年龄 {{ currentRecord.patient.age }}</span>
+        <span>{{ currentImageTypeLabel }}</span>
+        <span>{{ currentRecord.detections.length }} 个病灶</span>
+        <span>平均置信度 {{ averageConfidence }}%</span>
       </div>
 
       <div class="report-box">
@@ -149,7 +118,7 @@ onBeforeUnmount(() => {
 
       <div class="report-box">
         <div class="panel-header">
-          <span>病灶风险概览</span>
+          <span>重点病灶</span>
           <el-tag type="success">高置信 {{ highConfidenceCount }} 项</el-tag>
         </div>
         <el-empty v-if="riskItems.length === 0" description="暂无病灶风险项" />
@@ -164,6 +133,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
+      <div class="sub-title table-title">检测明细</div>
       <el-table :data="currentRecord.detections" stripe>
         <el-table-column prop="tooth_id" label="牙位" min-width="80" />
         <el-table-column prop="class" label="类别" min-width="120" />

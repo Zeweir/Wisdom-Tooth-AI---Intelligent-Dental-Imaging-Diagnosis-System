@@ -22,6 +22,13 @@ export interface Report {
 export interface AnalysisItem {
   image_id: string;
   patient_id: string;
+  patient: {
+    patient_id: string;
+    name: string;
+    gender: string | null;
+    age: number | null;
+    phone: string | null;
+  } | null;
   image_type: "panoramic" | "periapical" | "cbct";
   filename: string;
   file_path: string;
@@ -54,6 +61,12 @@ export interface ReportReviewPayload {
 
 export interface DashboardSummary {
   total_images: number;
+  total_patients: number;
+  recent_patients: number;
+  pending_review_cases: number;
+  dataset_count: number;
+  open_dataset_count: number;
+  covered_disease_count: number;
   processing_images: number;
   completed_images: number;
   detection_count: number;

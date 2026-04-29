@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { UploadUserFile } from 'element-plus'
+import { listPatients } from '../api/patients'
 import type { AnalysisItem } from '../types/analysis'
+import type { PatientRecord } from '../types/patient'
 
 const emit = defineEmits<{
-  submit: [payload: { file: File; patientId: string; imageType: AnalysisItem['image_type'] }]
+  submit: [payload: { file: File; patientId: string; patientName?: string; imageType: AnalysisItem['image_type'] }]
 }>()
 
 const props = defineProps<{
@@ -17,10 +19,36 @@ const socketEvents = defineModel<string[]>('socketEvents', { required: true })
 
 const form = reactive({
   patientId: 'P-0001',
+  patientName: '',
   imageType: 'panoramic' as AnalysisItem['image_type']
 })
 const uploadFile = ref<File | null>(null)
 const uploadList = ref<UploadUserFile[]>([])
+const patientOptions = ref<PatientRecord[]>([])
+const patientsLoading = ref(false)
+
+async function searchPatients(keyword = '') {
+  if (!props.canUpload) {
+    patientOptions.value = []
+    return
+  }
+  patientsLoading.value = true
+  try {
+    const result = await listPatients(keyword, { limit: 8, offset: 0 })
+    patientOptions.value = result.items
+  } catch {
+    patientOptions.value = []
+  } finally {
+    patientsLoading.value = false
+  }
+}
+
+function handlePatientChange(patientId: string) {
+  const patient = patientOptions.value.find((item) => item.patient_id === patientId)
+  if (patient) {
+    form.patientName = patient.name
+  }
+}
 
 function handleFileChange(file: UploadUserFile) {
   uploadFile.value = file.raw ?? null
@@ -36,9 +64,14 @@ function handleSubmit() {
   emit('submit', {
     file: uploadFile.value,
     patientId: form.patientId,
+    patientName: form.patientName || undefined,
     imageType: form.imageType
   })
 }
+
+onMounted(() => {
+  void searchPatients()
+})
 </script>
 
 <template>
@@ -58,8 +91,30 @@ function handleSubmit() {
         </div>
         <p class="upload-hint">建议上传脱敏后的口腔影像文件，系统会自动进入 AI 分析与报告生成流程。</p>
       </div>
-      <el-form-item label="患者 ID">
-        <el-input v-model="form.patientId" placeholder="例如 P-0001" />
+      <el-form-item label="患者">
+        <el-select
+          v-model="form.patientId"
+          class="w-full"
+          filterable
+          remote
+          allow-create
+          default-first-option
+          reserve-keyword
+          :remote-method="searchPatients"
+          :loading="patientsLoading"
+          placeholder="搜索患者编号或姓名，也可输入新编号"
+          @change="handlePatientChange"
+        >
+          <el-option
+            v-for="patient in patientOptions"
+            :key="patient.patient_id"
+            :label="`${patient.name} (${patient.patient_id})`"
+            :value="patient.patient_id"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="患者姓名（新患者可快速建档）">
+        <el-input v-model="form.patientName" placeholder="例如 张三；留空则以患者编号建档" />
       </el-form-item>
       <el-form-item label="影像类型">
         <el-select v-model="form.imageType" class="w-full">

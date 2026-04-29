@@ -48,8 +48,8 @@ const pendingCount = computed(() => props.records.filter((record) => record.repo
     </div>
 
     <el-form label-position="top">
-      <el-form-item label="患者 ID">
-        <el-input v-model="props.filters.patient_id" placeholder="按患者 ID 模糊搜索" clearable />
+      <el-form-item label="患者">
+        <el-input v-model="props.filters.patient_id" placeholder="按患者编号模糊搜索" clearable />
       </el-form-item>
       <el-form-item label="影像类型">
         <el-select v-model="props.filters.image_type" class="w-full" clearable>
@@ -83,9 +83,10 @@ const pendingCount = computed(() => props.records.filter((record) => record.repo
         @click="emit('select', record.image_id)"
       >
         <div class="record-main">
-          <strong>{{ record.patient_id }}</strong>
+          <strong>{{ record.patient?.name ?? record.patient_id }}</strong>
           <span>{{ getImageTypeLabel(record.image_type) }}</span>
         </div>
+        <div v-if="record.patient?.name" class="record-secondary">患者编号：{{ record.patient_id }}</div>
         <div class="record-secondary">{{ record.filename }}</div>
         <div class="record-meta">
           <el-tag size="small">{{ getImageTypeLabel(record.image_type) }}</el-tag>

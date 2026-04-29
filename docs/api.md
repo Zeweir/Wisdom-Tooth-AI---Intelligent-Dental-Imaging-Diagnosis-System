@@ -32,7 +32,57 @@
 
 - `GET /api/v1/dashboard/summary`
 - 需要 `read:images`。
-- 返回影像总数、处理中数量、已完成数量、病灶数量、平均置信度、报告状态分布、影像类型分布、审计事件数和最新病例。
+- 返回影像总数、患者总数、近 7 天新增患者、待审核病例、处理中数量、已完成数量、病灶数量、平均置信度、报告状态分布、影像类型分布、审计事件数和最新病例。
+
+## 患者档案
+
+- `GET /api/v1/patients`
+- 需要 `read:images`。
+- Query：`keyword`、`limit`、`offset`。
+- 返回分页后的患者档案，包含影像数量和最近影像时间。
+
+- `POST /api/v1/patients`
+- 需要 `upload:images`。
+- Body：`patient_id`、`name`、`gender`、`age`、`phone`、`notes`。
+- 创建患者基础档案。
+
+- `GET /api/v1/patients/{patient_id}`
+- 需要 `read:images`。
+- 返回患者详情和病例统计。
+
+- `PUT /api/v1/patients/{patient_id}`
+- 需要 `upload:images`。
+- Body：`name`、`gender`、`age`、`phone`、`notes`。
+- 更新患者基础档案。
+
+- `GET /api/v1/patients/{patient_id}/images`
+- 需要 `read:images`。
+- Query：`limit`、`offset`。
+- 返回该患者的分页影像记录。
+
+## 数据集中心
+
+- `GET /api/v1/datasets`
+- 需要 `read:images`。
+- Query：`keyword`、`task_type`、`disease`、`limit`、`offset`。
+- 返回分页后的公开数据集登记，包含来源、许可、任务类型、病种标签和访问状态。
+
+- `POST /api/v1/datasets`
+- 需要 `upload:images`。
+- Body：`name`、`source_name`、`homepage_url`、`paper_url`、`license`、`image_type`、`task_types`、`disease_tags`、`sample_size`、`annotation_format`、`access_status`、`priority`、`notes`。
+- 新增一个数据集来源登记，不上传真实影像文件。
+
+- `POST /api/v1/datasets/seed-public`
+- 需要 `upload:images`。
+- 写入内置公开数据集清单；重复执行会跳过已存在的数据集。
+
+- `GET /api/v1/datasets/{dataset_id}`
+- 需要 `read:images`。
+- 返回单个数据集登记详情。
+
+- `PUT /api/v1/datasets/{dataset_id}`
+- 需要 `upload:images`。
+- 更新数据集登记字段。
 
 ## 影像与分析
 
@@ -43,7 +93,8 @@
 
 - `POST /api/v1/images/upload`
 - 需要 `upload:images`。
-- FormData：`file`、`patient_id`、`image_type`。
+- FormData：`file`、`patient_id`、`image_type`、可选 `patient_name`。
+- 上传时如果患者档案不存在，会自动创建最小患者档案。
 - 返回新影像 `image_id` 和处理状态。
 
 - `GET /api/v1/analysis/{image_id}`

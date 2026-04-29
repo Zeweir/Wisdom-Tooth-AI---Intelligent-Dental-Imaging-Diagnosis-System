@@ -137,7 +137,7 @@ def generate_analysis_result(image: ImageRecord, image_bytes: bytes | None) -> d
     }
 
 
-def serialize_analysis(image: ImageRecord) -> dict[str, Any]:
+def serialize_analysis(image: ImageRecord, patient: dict[str, Any] | None = None) -> dict[str, Any]:
     if image.report is None:
         raise ValueError('image report relation must exist')
 
@@ -151,6 +151,7 @@ def serialize_analysis(image: ImageRecord) -> dict[str, Any]:
         'status': image.status,
         'detections': image.detections,
         'segmentation_url': image.segmentation_url,
+        'patient': patient,
         'report': {
             'report_id': image.report.report_id,
             'content': image.report.content,
@@ -162,7 +163,16 @@ def serialize_analysis(image: ImageRecord) -> dict[str, Any]:
     }
 
 
-def build_dashboard_summary(images: list[ImageRecord], audit_count: int) -> dict[str, Any]:
+def build_dashboard_summary(
+    images: list[ImageRecord],
+    audit_count: int,
+    *,
+    patient_count: int = 0,
+    recent_patient_count: int = 0,
+    dataset_count: int = 0,
+    open_dataset_count: int = 0,
+    covered_disease_count: int = 0,
+) -> dict[str, Any]:
     report_status_counts = {
         'processing': 0,
         'ai_generated': 0,
@@ -193,6 +203,14 @@ def build_dashboard_summary(images: list[ImageRecord], audit_count: int) -> dict
     latest_image = images[0] if images else None
     return {
         'total_images': len(images),
+        'total_patients': patient_count,
+        'recent_patients': recent_patient_count,
+        'pending_review_cases': sum(
+            1 for image in images if image.report is not None and image.report.status in {'ai_generated', 'doctor_reviewed'}
+        ),
+        'dataset_count': dataset_count,
+        'open_dataset_count': open_dataset_count,
+        'covered_disease_count': covered_disease_count,
         'processing_images': sum(1 for image in images if image.status == 'processing'),
         'completed_images': sum(1 for image in images if image.status == 'completed'),
         'detection_count': detection_count,

@@ -3,6 +3,8 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Response, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from datetime import timedelta
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
@@ -10,19 +12,39 @@ from app.audit import count_audit_logs, create_user_audit_log, list_audit_logs, 
 from app.auth import AuthInfo, authorize_websocket, build_auth_profile, build_rbac_model_payload, ensure_scopes, require_api_auth
 from app.config import ALLOWED_ORIGINS
 from app.database import SessionLocal, get_db
-from app.models import AuditLogRecord, ImageRecord, ReportRecord
+from app.datasets import create_dataset, get_dataset_or_404, get_dataset_summary, list_datasets, seed_public_datasets, serialize_dataset, update_dataset
+from app.models import AuditLogRecord, ImageRecord, PatientRecord, ReportRecord
+from app.patients import (
+    create_patient,
+    ensure_patient_record,
+    get_patient_or_404,
+    get_patient_stats,
+    list_patients,
+    serialize_patient,
+    serialize_patient_summary,
+    update_patient,
+)
 from app.schemas import (
     AnalysisListResponse,
     AnalysisResponse,
     AuditLogListResponse,
     DashboardSummaryResponse,
+    DatasetCatalogCreateRequest,
+    DatasetCatalogListResponse,
+    DatasetCatalogResponse,
+    DatasetCatalogUpdateRequest,
+    DatasetSeedResponse,
     ImageType,
+    PatientCreateRequest,
+    PatientListResponse,
+    PatientResponse,
+    PatientUpdateRequest,
     ReportReviewRequest,
     ReportReviewResponse,
     ReportStatus,
     UploadApiResponse,
 )
-from app.services import build_dashboard_summary, build_image_record, serialize_analysis
+from app.services import build_dashboard_summary, build_image_record, now_utc, serialize_analysis
 from app.storage import storage_service
 from app.tasks import run_image_analysis
 
@@ -41,6 +63,14 @@ def get_image_or_404(db: Session, image_id: str) -> ImageRecord:
     if image is None:
         raise HTTPException(status_code=404, detail="未找到对应影像分析结果")
     return image
+
+
+def build_patient_summary_map(db: Session, images: list[ImageRecord]) -> dict[str, dict[str, Any]]:
+    patient_ids = sorted({image.patient_id for image in images if image.patient_id})
+    if not patient_ids:
+        return {}
+    patients = db.execute(select(PatientRecord).where(PatientRecord.patient_id.in_(patient_ids))).scalars().all()
+    return {patient.patient_id: serialize_patient_summary(patient) for patient in patients}
 
 
 @app.get("/")
@@ -113,7 +143,196 @@ def get_dashboard_summary(
         select(ImageRecord).options(joinedload(ImageRecord.report)).order_by(ImageRecord.created_at.desc())
     ).unique().scalars().all()
     audit_count = db.scalar(select(func.count()).select_from(AuditLogRecord)) or 0
-    return {"code": 200, "data": build_dashboard_summary(images, audit_count)}
+    patient_count = db.scalar(select(func.count()).select_from(PatientRecord)) or 0
+    recent_cutoff = now_utc() - timedelta(days=7)
+    recent_patient_count = db.scalar(
+        select(func.count()).select_from(PatientRecord).where(PatientRecord.created_at >= recent_cutoff)
+    ) or 0
+    dataset_summary = get_dataset_summary(db)
+    return {
+        "code": 200,
+        "data": build_dashboard_summary(
+            images,
+            audit_count,
+            patient_count=patient_count,
+            recent_patient_count=recent_patient_count,
+            **dataset_summary,
+        ),
+    }
+
+
+@app.get("/api/v1/datasets", response_model=DatasetCatalogListResponse)
+def get_datasets(
+    keyword: str | None = Query(default=None),
+    task_type: str | None = Query(default=None),
+    disease: str | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _: AuthInfo = Depends(require_api_auth('read:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    items, total = list_datasets(db, keyword=keyword, task_type=task_type, disease=disease, limit=limit, offset=offset)
+    return {"code": 200, "data": items, "meta": {"limit": limit, "offset": offset, "total": total}}
+
+
+@app.post("/api/v1/datasets", response_model=DatasetCatalogResponse)
+def post_dataset(
+    payload: DatasetCatalogCreateRequest,
+    auth: AuthInfo = Depends(require_api_auth('upload:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    dataset = create_dataset(db, payload)
+    create_user_audit_log(
+        db,
+        auth=auth,
+        action='dataset.created',
+        resource_type='dataset',
+        resource_id=dataset.dataset_id,
+        detail={'name': dataset.name, 'source_name': dataset.source_name},
+    )
+    db.commit()
+    db.refresh(dataset)
+    return {"code": 200, "data": serialize_dataset(dataset)}
+
+
+@app.post("/api/v1/datasets/seed-public", response_model=DatasetSeedResponse)
+def post_seed_public_datasets(
+    auth: AuthInfo = Depends(require_api_auth('upload:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    created, skipped = seed_public_datasets(db)
+    create_user_audit_log(
+        db,
+        auth=auth,
+        action='dataset.seeded',
+        resource_type='dataset',
+        resource_id='public-seed',
+        detail={'created': created, 'skipped': skipped},
+    )
+    db.commit()
+    return {"code": 200, "data": {"created": created, "skipped": skipped}}
+
+
+@app.get("/api/v1/datasets/{dataset_id}", response_model=DatasetCatalogResponse)
+def get_dataset(
+    dataset_id: str,
+    _: AuthInfo = Depends(require_api_auth('read:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    dataset = get_dataset_or_404(db, dataset_id)
+    return {"code": 200, "data": serialize_dataset(dataset)}
+
+
+@app.put("/api/v1/datasets/{dataset_id}", response_model=DatasetCatalogResponse)
+def put_dataset(
+    dataset_id: str,
+    payload: DatasetCatalogUpdateRequest,
+    auth: AuthInfo = Depends(require_api_auth('upload:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    dataset = update_dataset(db, dataset_id, payload)
+    create_user_audit_log(
+        db,
+        auth=auth,
+        action='dataset.updated',
+        resource_type='dataset',
+        resource_id=dataset.dataset_id,
+        detail={'updated_fields': sorted(payload.model_dump(exclude_unset=True).keys())},
+    )
+    db.commit()
+    db.refresh(dataset)
+    return {"code": 200, "data": serialize_dataset(dataset)}
+
+
+@app.get("/api/v1/patients", response_model=PatientListResponse)
+def get_patients(
+    keyword: str | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _: AuthInfo = Depends(require_api_auth('read:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    items, total = list_patients(db, keyword=keyword, limit=limit, offset=offset)
+    return {"code": 200, "data": items, "meta": {"limit": limit, "offset": offset, "total": total}}
+
+
+@app.post("/api/v1/patients", response_model=PatientResponse)
+def post_patient(
+    payload: PatientCreateRequest,
+    auth: AuthInfo = Depends(require_api_auth('upload:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    patient = create_patient(db, payload)
+    create_user_audit_log(
+        db,
+        auth=auth,
+        action='patient.created',
+        resource_type='patient',
+        resource_id=patient.patient_id,
+        detail={'patient_id': patient.patient_id, 'name': patient.name},
+    )
+    db.commit()
+    db.refresh(patient)
+    image_count, latest_image_at = get_patient_stats(db, patient.patient_id)
+    return {"code": 200, "data": serialize_patient(patient, image_count=image_count, latest_image_at=latest_image_at)}
+
+
+@app.get("/api/v1/patients/{patient_id}", response_model=PatientResponse)
+def get_patient(
+    patient_id: str,
+    _: AuthInfo = Depends(require_api_auth('read:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    patient = get_patient_or_404(db, patient_id)
+    image_count, latest_image_at = get_patient_stats(db, patient.patient_id)
+    return {"code": 200, "data": serialize_patient(patient, image_count=image_count, latest_image_at=latest_image_at)}
+
+
+@app.put("/api/v1/patients/{patient_id}", response_model=PatientResponse)
+def put_patient(
+    patient_id: str,
+    payload: PatientUpdateRequest,
+    auth: AuthInfo = Depends(require_api_auth('upload:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    patient = update_patient(db, patient_id, payload)
+    create_user_audit_log(
+        db,
+        auth=auth,
+        action='patient.updated',
+        resource_type='patient',
+        resource_id=patient.patient_id,
+        detail={'patient_id': patient.patient_id, 'updated_fields': sorted(payload.model_dump(exclude_unset=True).keys())},
+    )
+    db.commit()
+    db.refresh(patient)
+    image_count, latest_image_at = get_patient_stats(db, patient.patient_id)
+    return {"code": 200, "data": serialize_patient(patient, image_count=image_count, latest_image_at=latest_image_at)}
+
+
+@app.get("/api/v1/patients/{patient_id}/images", response_model=AnalysisListResponse)
+def get_patient_images(
+    patient_id: str,
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _: AuthInfo = Depends(require_api_auth('read:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    patient = get_patient_or_404(db, patient_id)
+    statement = (
+        select(ImageRecord)
+        .options(joinedload(ImageRecord.report))
+        .where(ImageRecord.patient_id == patient.patient_id)
+        .order_by(ImageRecord.created_at.desc())
+    )
+    total = db.scalar(select(func.count()).select_from(ImageRecord).where(ImageRecord.patient_id == patient.patient_id)) or 0
+    items = db.execute(statement.offset(offset).limit(limit)).unique().scalars().all()
+    patient_summary = serialize_patient_summary(patient)
+    return {
+        "code": 200,
+        "data": [serialize_analysis(item, patient_summary) for item in items],
+        "meta": {"limit": limit, "offset": offset, "total": total},
+    }
 
 
 @app.get("/api/v1/images", response_model=AnalysisListResponse)
@@ -139,17 +358,24 @@ def list_images(
         count_statement = count_statement.join(ImageRecord.report).where(ReportRecord.status == report_status)
     total = db.scalar(count_statement) or 0
     items = db.execute(statement.offset(offset).limit(limit)).unique().scalars().all()
-    return {"code": 200, "data": [serialize_analysis(item) for item in items], "meta": {"limit": limit, "offset": offset, "total": total}}
+    patient_map = build_patient_summary_map(db, items)
+    return {
+        "code": 200,
+        "data": [serialize_analysis(item, patient_map.get(item.patient_id)) for item in items],
+        "meta": {"limit": limit, "offset": offset, "total": total},
+    }
 
 
 @app.post("/api/v1/images/upload", response_model=UploadApiResponse)
 async def upload_image(
     file: UploadFile = File(...),
     patient_id: str = Form(...),
+    patient_name: str | None = Form(default=None),
     image_type: ImageType = Form(...),
     auth: AuthInfo = Depends(require_api_auth('upload:images')),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
+    patient = ensure_patient_record(db, patient_id=patient_id, name=patient_name)
     image = build_image_record(
         patient_id=patient_id,
         image_type=image_type,
@@ -181,6 +407,7 @@ async def upload_image(
         resource_id=image.image_id,
         detail={
             'patient_id': patient_id,
+            'patient_name': patient.name,
             'image_type': image_type,
             'filename': image.filename,
             'storage_provider': image.storage_provider,
@@ -235,7 +462,8 @@ async def upload_image(
 @app.get("/api/v1/analysis/{image_id}", response_model=AnalysisResponse)
 def get_analysis(image_id: str, _: AuthInfo = Depends(require_api_auth('read:images')), db: Session = Depends(get_db)) -> dict[str, Any]:
     image = get_image_or_404(db, image_id)
-    return {"code": 200, "data": serialize_analysis(image)}
+    patient = db.get(PatientRecord, image.patient_id)
+    return {"code": 200, "data": serialize_analysis(image, serialize_patient_summary(patient))}
 
 
 @app.get("/api/v1/images/{image_id}/file")

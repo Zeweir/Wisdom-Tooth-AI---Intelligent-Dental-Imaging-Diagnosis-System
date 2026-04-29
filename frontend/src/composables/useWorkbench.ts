@@ -116,6 +116,10 @@ export function useWorkbench(): WorkbenchContext {
       { key: 'workspace', label: '影像工作站', caption: '上传、记录、分析与审核', shortLabel: '工作站', to: '/workspace' }
     ]
 
+    if (canReadImages.value) {
+      items.push({ key: 'patients', label: '患者档案', caption: '患者列表、病例统计与历史影像', shortLabel: '患者', to: '/patients' })
+      items.push({ key: 'datasets', label: '数据集中心', caption: '公开数据集、许可与适用任务', shortLabel: '数据集', to: '/datasets' })
+    }
     if (canViewAccessPanel.value) {
       items.push({ key: 'access', label: '权限与角色', caption: 'RBAC 与访问画像', shortLabel: '权限', to: '/access' })
     }
@@ -176,14 +180,14 @@ export function useWorkbench(): WorkbenchContext {
 
     return [
       {
-        label: '正式报告',
-        value: dashboardSummary.value.report_status_counts.finalized ?? 0,
-        description: '已完成正式确认的诊断报告'
+        label: '患者档案',
+        value: dashboardSummary.value.total_patients,
+        description: `近 7 天新增 ${dashboardSummary.value.recent_patients} 位患者`
       },
       {
-        label: '平均置信度',
-        value: Math.round(dashboardSummary.value.average_confidence * 100),
-        description: '全部检测结果的平均置信度百分比'
+        label: '公开数据集',
+        value: dashboardSummary.value.dataset_count,
+        description: `开放可访问 ${dashboardSummary.value.open_dataset_count} 个，覆盖 ${dashboardSummary.value.covered_disease_count} 类标签`
       },
       {
         label: '处理中',
@@ -354,7 +358,7 @@ export function useWorkbench(): WorkbenchContext {
     })
   }
 
-  async function handleUpload(payload: { file: File; patientId: string; imageType: AnalysisItem['image_type'] }) {
+  async function handleUpload(payload: { file: File; patientId: string; patientName?: string; imageType: AnalysisItem['image_type'] }) {
     if (!canUpload.value) {
       ElMessage.warning('你当前没有上传影像的权限')
       return

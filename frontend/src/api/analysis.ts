@@ -54,11 +54,15 @@ export async function getDashboardSummary() {
 export async function uploadImage(payload: {
   file: File;
   patientId: string;
+  patientName?: string;
   imageType: AnalysisItem["image_type"];
 }) {
   const formData = new FormData();
   formData.append("file", payload.file);
   formData.append("patient_id", payload.patientId);
+  if (payload.patientName) {
+    formData.append("patient_name", payload.patientName);
+  }
   formData.append("image_type", payload.imageType);
 
   const response = await http.post<{

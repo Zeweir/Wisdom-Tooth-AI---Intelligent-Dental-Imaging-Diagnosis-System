@@ -11,6 +11,8 @@
 
 
 - 影像上传
+- 患者档案与病例归档
+- 公开牙科影像数据集登记
 - AI 分析结果查询
 - 报告医生审核
 - WebSocket 分析事件演示
@@ -153,6 +155,16 @@ docker compose up --build
 - `GET /api/v1/auth/me`
 - `GET /api/v1/auth/rbac-model`
 - `GET /api/v1/dashboard/summary`
+- `GET /api/v1/patients`
+- `POST /api/v1/patients`
+- `GET /api/v1/patients/{patient_id}`
+- `PUT /api/v1/patients/{patient_id}`
+- `GET /api/v1/patients/{patient_id}/images`
+- `GET /api/v1/datasets`
+- `POST /api/v1/datasets`
+- `POST /api/v1/datasets/seed-public`
+- `GET /api/v1/datasets/{dataset_id}`
+- `PUT /api/v1/datasets/{dataset_id}`
 - `POST /api/v1/images/upload`
 - `GET /api/v1/images`
 - `GET /api/v1/analysis/{image_id}`
@@ -180,12 +192,15 @@ docker compose up --build
 - 权限说明区域已包含角色来源、claim 摘要与菜单映射调试信息
 - 已提供审计日志表与关键动作留痕
 - 已支持影像列表、审计日志分页查询与工作台摘要统计
+- 已支持患者档案、患者搜索、病例时间线和上传时自动建档
+- 已支持公开数据集登记、seed 初始化、筛选和数据准备指标
 - 前端已支持报告 HTML 导出、浏览器打印预览和影像检测框叠加展示
 - 提供 `docker-compose.yml` 支持数据库、后端、前端一键启动
 
 后续可以继续扩展：
 
 - 更精细的影像检测模型与分割结果可视化
+- 数据集本地导入、标注格式转换与训练集划分
 - 患者端/多租户角色扩展
 - 更完整的审计查询与导出能力
 - 更强的模型结果评估与人工复核流程

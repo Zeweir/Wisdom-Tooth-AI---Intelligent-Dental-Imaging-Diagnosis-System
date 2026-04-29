@@ -6,7 +6,7 @@ import type { AuditLogFilters, AuditLogItem, AuditLogPagination } from './types/
 import type { AuthProfile, MenuCapability, RbacModel } from './types/auth'
 
 export interface NavigationItem {
-  key: 'home' | 'workspace' | 'access' | 'audit'
+  key: 'home' | 'workspace' | 'patients' | 'datasets' | 'access' | 'audit'
   label: string
   caption: string
   shortLabel: string
@@ -70,7 +70,7 @@ export interface WorkbenchContext {
   beginSignOut: () => Promise<void>
   fetchRecords: () => Promise<void>
   fetchAnalysisRecord: (imageId: string) => Promise<void>
-  handleUpload: (payload: { file: File; patientId: string; imageType: AnalysisItem['image_type'] }) => Promise<void>
+  handleUpload: (payload: { file: File; patientId: string; patientName?: string; imageType: AnalysisItem['image_type'] }) => Promise<void>
   applyFilters: () => Promise<void>
   resetFilters: () => Promise<void>
   handleRecordsPageChange: (page: number) => Promise<void>

@@ -16,8 +16,10 @@ npm.cmd run build
 
 需要手动检查：
 
-- `/` 首页摘要、影像类型分布、临床流程卡片正常展示。
+- `/` 首页摘要、患者指标、当前病例入口正常展示。
 - `/workspace` 上传区、分页病例列表、影像预览、检测框、报告审核、报告打印和 HTML 导出正常。
+- `/patients` 患者列表、搜索、新建/编辑、患者病例时间线正常。
+- `/datasets` 数据集初始化、搜索、筛选、新建/编辑、详情抽屉正常。
 - `/access` 权限中心在有权限和无权限状态下都不破版。
 - `/audit` 审计日志分页、高级筛选、刷新按钮正常。
 
@@ -38,6 +40,12 @@ npm.cmd run build
 需要确认输出包含：
 
 - `/api/v1/dashboard/summary`
+- `/api/v1/patients`
+- `/api/v1/patients/{patient_id}`
+- `/api/v1/patients/{patient_id}/images`
+- `/api/v1/datasets`
+- `/api/v1/datasets/seed-public`
+- `/api/v1/datasets/{dataset_id}`
 - `/api/v1/images`
 - `/api/v1/audit-logs`
 - `/api/v1/reports/{report_id}/review`
@@ -49,15 +57,18 @@ npm.cmd run build
 1. 启动 PostgreSQL、Redis、MinIO、后端、Celery Worker 和前端。
 2. 使用 Logto 登录具备 `read:images`、`upload:images`、`review:reports` 的账号。
 3. 上传影像，确认 WebSocket 事件和列表分页刷新。
-4. 选择病例，确认影像预览、检测框和置信度展示。
-5. 提交医生审核意见，确认报告状态变为医生已审核。
-6. 使用具备 `finalize:reports` 的账号正式确认报告。
-7. 进入审计中心，按动作、资源类型、资源 ID 或操作者筛选日志。
+4. 进入患者档案，新建患者并验证搜索、编辑和病例时间线。
+5. 进入数据集中心，执行公开清单初始化，验证 DENTEX、OdontoAI、Tufts 等登记可搜索和查看详情。
+6. 在工作站上传影像时选择已有患者或输入新患者编号，确认患者档案自动绑定。
+7. 选择病例，确认影像预览、检测框和置信度展示。
+8. 提交医生审核意见，确认报告状态变为医生已审核。
+9. 使用具备 `finalize:reports` 的账号正式确认报告。
+10. 进入审计中心，按动作、资源类型、资源 ID 或操作者筛选日志。
 
 ## 回归场景
 
 - 未登录时只能看到登录提示。
 - 仅 `upload:images` 权限不可查看记录详情。
-- 仅 `read:images` 权限可查看影像但不可审核。
+- 仅 `read:images` 权限可查看影像、患者档案和数据集中心但不可编辑。
 - `doctor` 可审核但不可正式确认。
 - `chief_doctor` 可审核并正式确认。

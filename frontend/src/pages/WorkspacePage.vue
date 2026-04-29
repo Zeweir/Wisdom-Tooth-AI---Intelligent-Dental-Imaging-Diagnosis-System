@@ -33,7 +33,6 @@ const fetchAnalysisRecord = workbench.fetchAnalysisRecord
 const handleUpload = workbench.handleUpload
 const handleReviewSubmit = workbench.handleReviewSubmit
 const handleFinalizeSubmit = workbench.handleFinalizeSubmit
-const clinicalInsights = workbench.clinicalInsights
 </script>
 
 <template>
@@ -41,12 +40,8 @@ const clinicalInsights = workbench.clinicalInsights
     <section class="medical-page-header">
       <div>
         <div class="overview-pill">影像工作站</div>
-        <h2>病例接入、分析浏览与报告审核</h2>
-        <p>面向医生的核心工作区，只保留病例、影像、诊断意见和审核操作。</p>
-      </div>
-      <div class="section-heading-tags">
-        <el-tag type="info">病例优先</el-tag>
-        <el-tag type="success">审核优先</el-tag>
+        <h2>上传影像，审核报告</h2>
+        <p>围绕当前病例完成上传、查看 AI 结果和医生确认。</p>
       </div>
     </section>
 
@@ -59,24 +54,15 @@ const clinicalInsights = workbench.clinicalInsights
     </UnauthorizedPanel>
 
     <template v-else>
-      <section class="command-strip">
-        <div v-for="item in clinicalInsights" :key="item.label" class="command-strip-item">
-          <span>{{ item.label }}</span>
-          <strong>{{ item.value }}{{ item.label === '平均置信度' ? '%' : '' }}</strong>
-          <small>{{ item.description }}</small>
-        </div>
-      </section>
-
-      <section class="section-block">
-        <div class="section-heading">
-          <div>
-            <h3>影像接入与病例列表</h3>
-            <p>上传新病例并从右侧快速筛选、定位分析记录。</p>
+      <section class="clinical-workbench-grid">
+        <div class="workbench-column case-column">
+          <div class="section-heading compact-heading">
+            <div>
+              <h3>病例队列</h3>
+              <p>上传或选择病例。</p>
+            </div>
+            <el-button v-if="canReadImages" text @click="fetchRecords">刷新</el-button>
           </div>
-          <el-button v-if="canReadImages" text @click="fetchRecords">刷新列表</el-button>
-        </div>
-
-        <div class="grid-layout">
           <UploadPanel
             v-if="canUpload"
             v-model:loading="loading"
@@ -104,36 +90,39 @@ const clinicalInsights = workbench.clinicalInsights
             @page-size-change="handleRecordsPageSizeChange"
             @select="fetchAnalysisRecord"
           />
-
           <UnauthorizedPanel
             v-else
             title="当前角色不可查看分析记录"
             description="查看影像、详情和预览需要 `read:images` 权限。"
           />
         </div>
-      </section>
 
-      <section class="section-block">
-        <div class="section-heading">
-          <div>
-            <h3>影像详情与报告中心</h3>
-            <p>围绕当前病例查看 AI 结果，并由医生补充审核意见或正式确认。</p>
+        <div class="workbench-column image-column">
+          <div class="section-heading compact-heading">
+            <div>
+              <h3>影像判读</h3>
+              <p>查看影像、病灶和置信度。</p>
+            </div>
+            <div class="section-heading-tags">
+              <el-tag v-if="currentRecord" type="info">{{ currentRecord.patient?.name ?? currentRecord.patient_id }}</el-tag>
+              <el-tag v-if="currentRecord" type="success">{{ getReportStatusLabel(currentRecord.report.status) }}</el-tag>
+            </div>
           </div>
-          <div class="section-heading-tags">
-            <el-tag v-if="currentRecord" type="info">患者：{{ currentRecord.patient_id }}</el-tag>
-            <el-tag v-if="currentRecord" type="success">{{ getReportStatusLabel(currentRecord.report.status) }}</el-tag>
-          </div>
-        </div>
-
-        <div class="grid-layout detail-layout">
           <AnalysisDetailPanel v-if="canReadImages" :current-record="currentRecord" />
-
           <UnauthorizedPanel
             v-else
             title="当前角色不可查看影像详情"
             description="如需浏览检测结果和影像预览，请为用户分配 `read:images` 权限。"
           />
+        </div>
 
+        <div class="workbench-column report-column">
+          <div class="section-heading compact-heading">
+            <div>
+              <h3>报告审核</h3>
+              <p>补充意见并确认报告。</p>
+            </div>
+          </div>
           <ReportReviewPanel
             v-if="canReview || canReadImages"
             v-model:review-text="reviewText"

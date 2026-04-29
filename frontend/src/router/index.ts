@@ -5,7 +5,9 @@ import AppShell from '../layouts/AppShell.vue'
 const AuthCallbackPanel = () => import('../components/AuthCallbackPanel.vue')
 const AccessPage = () => import('../pages/AccessPage.vue')
 const AuditPage = () => import('../pages/AuditPage.vue')
+const DatasetPage = () => import('../pages/DatasetPage.vue')
 const HomePage = () => import('../pages/HomePage.vue')
+const PatientPage = () => import('../pages/PatientPage.vue')
 const WorkspacePage = () => import('../pages/WorkspacePage.vue')
 
 const router = createRouter({
@@ -29,6 +31,16 @@ const router = createRouter({
           path: 'workspace',
           name: 'workspace',
           component: WorkspacePage
+        },
+        {
+          path: 'patients',
+          name: 'patients',
+          component: PatientPage
+        },
+        {
+          path: 'datasets',
+          name: 'datasets',
+          component: DatasetPage
         },
         {
           path: 'access',

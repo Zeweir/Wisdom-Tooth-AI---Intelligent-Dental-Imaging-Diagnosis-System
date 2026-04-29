@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, JSON, String, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -33,6 +33,48 @@ class ImageRecord(Base):
         back_populates='image',
         cascade='all, delete-orphan',
         uselist=False,
+    )
+
+
+class PatientRecord(Base):
+    __tablename__ = 'patient_records'
+
+    patient_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100))
+    gender: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    age: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class DatasetCatalogRecord(Base):
+    __tablename__ = 'dataset_catalogs'
+
+    dataset_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    name: Mapped[str] = mapped_column(String(160), index=True)
+    source_name: Mapped[str] = mapped_column(String(120))
+    homepage_url: Mapped[str] = mapped_column(String(500))
+    paper_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    license: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    image_type: Mapped[str] = mapped_column(String(40), default='panoramic')
+    task_types: Mapped[list[str]] = mapped_column(JSON, default=list)
+    disease_tags: Mapped[list[str]] = mapped_column(JSON, default=list)
+    sample_size: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    annotation_format: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    access_status: Mapped[str] = mapped_column(String(40), default='open')
+    priority: Mapped[str] = mapped_column(String(30), default='medium')
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
 

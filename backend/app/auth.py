@@ -84,6 +84,18 @@ RBAC_MENU_ITEMS: tuple[dict[str, Any], ...] = (
         'required_scopes': ['read:images'],
     },
     {
+        'key': 'patients',
+        'label': '患者档案',
+        'description': '查询患者档案、病例统计与历史影像。',
+        'required_scopes': ['read:images'],
+    },
+    {
+        'key': 'datasets',
+        'label': '数据集中心',
+        'description': '维护公开牙科影像数据集、许可与适用任务。',
+        'required_scopes': ['read:images'],
+    },
+    {
         'key': 'review',
         'label': '报告审核',
         'description': '提交医生审核意见并在有权限时正式确认。',
