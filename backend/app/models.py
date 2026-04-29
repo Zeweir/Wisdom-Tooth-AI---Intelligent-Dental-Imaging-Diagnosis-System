@@ -78,6 +78,65 @@ class DatasetCatalogRecord(Base):
     )
 
 
+class DatasetImportRecord(Base):
+    __tablename__ = 'dataset_import_records'
+
+    import_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    dataset_id: Mapped[str] = mapped_column(String(36), ForeignKey('dataset_catalogs.dataset_id'), index=True)
+    import_method: Mapped[str] = mapped_column(String(40))
+    source_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    storage_provider: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    storage_bucket: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    storage_object_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    sample_count: Mapped[int] = mapped_column(Integer, default=0)
+    annotation_format: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    image_type: Mapped[str] = mapped_column(String(40), default='panoramic')
+    status: Mapped[str] = mapped_column(String(40), default='created')
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    dataset: Mapped[DatasetCatalogRecord] = relationship()
+
+
+class DatasetSampleRecord(Base):
+    __tablename__ = 'dataset_sample_records'
+
+    sample_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    import_id: Mapped[str] = mapped_column(String(36), ForeignKey('dataset_import_records.import_id'), index=True)
+    dataset_id: Mapped[str] = mapped_column(String(36), ForeignKey('dataset_catalogs.dataset_id'), index=True)
+    filename: Mapped[str] = mapped_column(String(500))
+    file_type: Mapped[str] = mapped_column(String(40), default='unknown')
+    image_type: Mapped[str] = mapped_column(String(40), default='panoramic')
+    annotation_status: Mapped[str] = mapped_column(String(40), default='unknown')
+    split: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    label_summary: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    storage_object_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class ModelEvaluationRecord(Base):
+    __tablename__ = 'model_evaluation_records'
+
+    evaluation_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    model_name: Mapped[str] = mapped_column(String(160))
+    model_version: Mapped[str] = mapped_column(String(120))
+    dataset_id: Mapped[str | None] = mapped_column(String(36), ForeignKey('dataset_catalogs.dataset_id'), nullable=True, index=True)
+    import_id: Mapped[str | None] = mapped_column(String(36), ForeignKey('dataset_import_records.import_id'), nullable=True, index=True)
+    precision: Mapped[float | None] = mapped_column(nullable=True)
+    recall: Mapped[float | None] = mapped_column(nullable=True)
+    map_score: Mapped[float | None] = mapped_column(nullable=True)
+    f1_score: Mapped[float | None] = mapped_column(nullable=True)
+    sample_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+
+
 class ReportRecord(Base):
     __tablename__ = 'report_records'
 

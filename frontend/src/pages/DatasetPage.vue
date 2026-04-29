@@ -2,10 +2,30 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 
-import { createDataset, listDatasets, seedPublicDatasets, updateDataset } from '../api/datasets'
+import {
+  createDataset,
+  createDatasetImport,
+  createModelEvaluation,
+  listDatasetImports,
+  listDatasetSamples,
+  listDatasets,
+  listModelEvaluations,
+  seedPublicDatasets,
+  splitDatasetImport,
+  updateDataset,
+  uploadDatasetZip,
+} from '../api/datasets'
 import UnauthorizedPanel from '../components/UnauthorizedPanel.vue'
 import type { PaginationMeta } from '../types/analysis'
-import type { DatasetCatalog, DatasetCatalogPayload } from '../types/dataset'
+import type {
+  DatasetCatalog,
+  DatasetCatalogPayload,
+  DatasetImportPayload,
+  DatasetImportRecord,
+  DatasetSampleRecord,
+  ModelEvaluationPayload,
+  ModelEvaluationRecord,
+} from '../types/dataset'
 import { useWorkbenchContext } from '../workbench'
 
 const workbench = useWorkbenchContext()
@@ -18,9 +38,19 @@ const refreshDashboardSummary = workbench.refreshDashboardSummary
 
 const datasets = ref<DatasetCatalog[]>([])
 const selectedDataset = ref<DatasetCatalog | null>(null)
+const selectedImport = ref<DatasetImportRecord | null>(null)
+const imports = ref<DatasetImportRecord[]>([])
+const samples = ref<DatasetSampleRecord[]>([])
+const evaluations = ref<ModelEvaluationRecord[]>([])
 const loading = ref(false)
+const importsLoading = ref(false)
+const samplesLoading = ref(false)
 const dialogVisible = ref(false)
+const importDialogVisible = ref(false)
+const evaluationDialogVisible = ref(false)
 const detailVisible = ref(false)
+const samplesDrawerVisible = ref(false)
+const activeDatasetTab = ref('imports')
 const editingDataset = ref<DatasetCatalog | null>(null)
 const filters = reactive({
   keyword: '',
@@ -28,6 +58,9 @@ const filters = reactive({
   disease: '',
 })
 const pagination = ref<PaginationMeta>({ limit: 9, offset: 0, total: 0 })
+const importsPagination = ref<PaginationMeta>({ limit: 8, offset: 0, total: 0 })
+const samplesPagination = ref<PaginationMeta>({ limit: 10, offset: 0, total: 0 })
+const evaluationsPagination = ref<PaginationMeta>({ limit: 8, offset: 0, total: 0 })
 const form = reactive<DatasetCatalogPayload>({
   name: '',
   source_name: '',
@@ -43,6 +76,27 @@ const form = reactive<DatasetCatalogPayload>({
   priority: 'medium',
   notes: '',
 })
+const importForm = reactive<DatasetImportPayload>({
+  import_method: 'local_directory',
+  source_path: '',
+  sample_count: 0,
+  annotation_format: '',
+  image_type: 'panoramic',
+  notes: '',
+})
+const evaluationForm = reactive<ModelEvaluationPayload>({
+  model_name: '',
+  model_version: '',
+  dataset_id: null,
+  import_id: null,
+  precision: null,
+  recall: null,
+  map_score: null,
+  f1_score: null,
+  sample_count: null,
+  notes: '',
+})
+const zipFile = ref<File | null>(null)
 
 const totalDiseaseTags = computed(() => new Set(datasets.value.flatMap((item) => item.disease_tags)).size)
 const openDatasetCount = computed(() => datasets.value.filter((item) => ['open', 'open_reference', 'open_registration'].includes(item.access_status)).length)
@@ -92,6 +146,13 @@ function openDetail(dataset: DatasetCatalog) {
   detailVisible.value = true
 }
 
+async function selectDataset(dataset: DatasetCatalog) {
+  selectedDataset.value = dataset
+  importsPagination.value = { ...importsPagination.value, offset: 0 }
+  evaluationsPagination.value = { ...evaluationsPagination.value, offset: 0 }
+  await Promise.all([refreshImports(), refreshEvaluations()])
+}
+
 async function refreshDatasets() {
   if (!canReadImages.value) {
     datasets.value = []
@@ -105,9 +166,62 @@ async function refreshDatasets() {
     })
     datasets.value = result.items
     pagination.value = result.meta
+    if (!selectedDataset.value && result.items.length > 0) {
+      selectedDataset.value = result.items[0]
+      await Promise.all([refreshImports(), refreshEvaluations()])
+    }
   } finally {
     loading.value = false
   }
+}
+
+async function refreshImports() {
+  if (!selectedDataset.value || !canReadImages.value) {
+    imports.value = []
+    return
+  }
+  importsLoading.value = true
+  try {
+    const result = await listDatasetImports(selectedDataset.value.dataset_id, {
+      limit: importsPagination.value.limit,
+      offset: importsPagination.value.offset,
+    })
+    imports.value = result.items
+    importsPagination.value = result.meta
+  } finally {
+    importsLoading.value = false
+  }
+}
+
+async function refreshSamples() {
+  if (!selectedImport.value || !canReadImages.value) {
+    samples.value = []
+    return
+  }
+  samplesLoading.value = true
+  try {
+    const result = await listDatasetSamples(selectedImport.value.import_id, {
+      limit: samplesPagination.value.limit,
+      offset: samplesPagination.value.offset,
+    })
+    samples.value = result.items
+    samplesPagination.value = result.meta
+  } finally {
+    samplesLoading.value = false
+  }
+}
+
+async function refreshEvaluations() {
+  if (!selectedDataset.value || !canReadImages.value) {
+    evaluations.value = []
+    return
+  }
+  const result = await listModelEvaluations(
+    { dataset_id: selectedDataset.value.dataset_id },
+    { limit: evaluationsPagination.value.limit, offset: evaluationsPagination.value.offset },
+  )
+  evaluations.value = result.items
+  evaluationsPagination.value = result.meta
 }
 
 async function applyFilters() {
@@ -163,6 +277,97 @@ async function submitDataset() {
   await refreshDashboardSummary()
 }
 
+function openImportDialog() {
+  if (!selectedDataset.value) {
+    ElMessage.warning('请先选择数据集')
+    return
+  }
+  importForm.import_method = 'local_directory'
+  importForm.source_path = ''
+  importForm.sample_count = 0
+  importForm.annotation_format = selectedDataset.value.annotation_format ?? ''
+  importForm.image_type = selectedDataset.value.image_type
+  importForm.notes = ''
+  zipFile.value = null
+  importDialogVisible.value = true
+}
+
+function openEvaluationDialog() {
+  if (!selectedDataset.value) {
+    ElMessage.warning('请先选择数据集')
+    return
+  }
+  evaluationForm.model_name = ''
+  evaluationForm.model_version = ''
+  evaluationForm.dataset_id = selectedDataset.value.dataset_id
+  evaluationForm.import_id = selectedImport.value?.import_id ?? null
+  evaluationForm.precision = null
+  evaluationForm.recall = null
+  evaluationForm.map_score = null
+  evaluationForm.f1_score = null
+  evaluationForm.sample_count = selectedImport.value?.sample_count ?? null
+  evaluationForm.notes = ''
+  evaluationDialogVisible.value = true
+}
+
+function handleZipChange(file: { raw?: File }) {
+  zipFile.value = file.raw ?? null
+}
+
+async function submitImport() {
+  if (!selectedDataset.value) {
+    return
+  }
+  const created = await createDatasetImport(selectedDataset.value.dataset_id, {
+    ...importForm,
+    source_path: importForm.source_path || null,
+    annotation_format: importForm.annotation_format || null,
+    notes: importForm.notes || null,
+  })
+  if (importForm.import_method === 'zip_upload') {
+    if (!zipFile.value) {
+      ElMessage.warning('请先选择 zip 样本包')
+      return
+    }
+    await uploadDatasetZip(created.import_id, zipFile.value)
+  }
+  ElMessage.success('导入批次已创建')
+  importDialogVisible.value = false
+  await refreshImports()
+}
+
+async function openSamplesDrawer(item: DatasetImportRecord) {
+  selectedImport.value = item
+  samplesPagination.value = { ...samplesPagination.value, offset: 0 }
+  samplesDrawerVisible.value = true
+  await refreshSamples()
+}
+
+async function handleSplitImport(item: DatasetImportRecord) {
+  const result = await splitDatasetImport(item.import_id, { train_ratio: 0.7, val_ratio: 0.15, test_ratio: 0.15 })
+  ElMessage.success(`划分完成：train ${result.train} / val ${result.val} / test ${result.test}`)
+  await refreshImports()
+  if (selectedImport.value?.import_id === item.import_id) {
+    await refreshSamples()
+  }
+}
+
+async function submitEvaluation() {
+  if (!evaluationForm.model_name || !evaluationForm.model_version) {
+    ElMessage.warning('请填写模型名称和版本')
+    return
+  }
+  await createModelEvaluation({
+    ...evaluationForm,
+    dataset_id: evaluationForm.dataset_id || null,
+    import_id: evaluationForm.import_id || null,
+    notes: evaluationForm.notes || null,
+  })
+  ElMessage.success('模型评估记录已创建')
+  evaluationDialogVisible.value = false
+  await refreshEvaluations()
+}
+
 function getPriorityTagType(priority: string) {
   if (priority === 'high') {
     return 'danger'
@@ -199,11 +404,11 @@ onMounted(async () => {
 
 <template>
   <div class="page-stack">
-    <section class="medical-page-header compact-page-header">
+    <section class="medical-page-header compact-page-header dataset-intro">
       <div>
-        <div class="overview-pill">数据集中心</div>
-        <h2>为模型训练准备公开数据来源</h2>
-        <p>先登记来源和许可，不下载真实影像。推荐从 DENTEX、OdontoAI 和 Tufts 开始。</p>
+        <div class="overview-pill">研发数据准备</div>
+        <h2>登记公开数据，逐步形成训练底座。</h2>
+        <p>普通医生不需要处理这里的内容；研发或管理员可在此维护来源、导入样本和记录模型评估。</p>
       </div>
     </section>
 
@@ -219,7 +424,7 @@ onMounted(async () => {
       <el-card class="panel" shadow="never">
         <template #header>
           <div class="panel-header">
-            <span>推荐公开清单</span>
+            <span>推荐数据来源</span>
             <div class="quick-action-row">
               <el-tooltip v-if="!canUpload" content="需要 upload:images 权限" placement="top">
                 <span><el-button type="primary" disabled>初始化公开清单</el-button></span>
@@ -230,7 +435,7 @@ onMounted(async () => {
           </div>
         </template>
 
-        <div class="dataset-brief-row">
+        <div class="dataset-brief-row dataset-status-row">
           <span>{{ pagination.total }} 个数据集</span>
           <span>{{ openDatasetCount }} 个可访问来源</span>
           <span>{{ totalDiseaseTags }} 类标签</span>
@@ -263,16 +468,17 @@ onMounted(async () => {
               <el-tag :type="getPriorityTagType(dataset.priority)">{{ dataset.priority }}</el-tag>
             </div>
             <p>{{ dataset.notes || '暂无备注' }}</p>
-            <div class="record-meta">
+            <div class="record-meta dataset-primary-meta">
               <el-tag>{{ dataset.image_type }}</el-tag>
               <el-tag type="success">{{ getAccessStatusLabel(dataset.access_status) }}</el-tag>
               <el-tag v-if="dataset.license" type="info">{{ dataset.license }}</el-tag>
             </div>
-            <div class="dataset-tag-list">
+            <div class="dataset-tag-list compact-tag-list">
               <el-tag v-for="task in dataset.task_types" :key="`${dataset.dataset_id}-${task}`" size="small">{{ task }}</el-tag>
               <el-tag v-for="disease in dataset.disease_tags" :key="`${dataset.dataset_id}-${disease}`" size="small" type="warning">{{ disease }}</el-tag>
             </div>
             <div class="quick-action-row">
+              <el-button type="primary" @click="selectDataset(dataset)">选择</el-button>
               <el-button type="primary" plain @click="openDetail(dataset)">详情</el-button>
               <el-button v-if="canUpload" text @click="openEditDialog(dataset)">编辑</el-button>
               <a :href="dataset.homepage_url" target="_blank" rel="noreferrer" class="el-button is-text">访问来源</a>
@@ -291,6 +497,56 @@ onMounted(async () => {
           />
         </div>
       </el-card>
+
+      <el-card v-if="selectedDataset" class="panel dataset-workbench-panel" shadow="never">
+        <template #header>
+          <div class="panel-header">
+            <span>数据准备工作区：{{ selectedDataset.name }}</span>
+            <div class="quick-action-row">
+              <el-button v-if="canUpload" type="primary" plain @click="openImportDialog">新建导入</el-button>
+              <el-button v-if="canUpload" plain @click="openEvaluationDialog">新增评估</el-button>
+            </div>
+          </div>
+        </template>
+
+        <el-tabs v-model="activeDatasetTab" class="dataset-tabs">
+          <el-tab-pane label="导入批次" name="imports">
+            <div class="dataset-tab-note">记录本地目录、ZIP 样本包或手动统计，后续训练前先确认样本索引。</div>
+            <el-skeleton v-if="importsLoading" :rows="4" animated />
+            <el-empty v-else-if="imports.length === 0" description="暂无导入批次，可登记本地目录、手动统计或上传 zip" />
+            <el-table v-else :data="imports" stripe>
+              <el-table-column prop="import_method" label="方式" min-width="120" />
+              <el-table-column prop="sample_count" label="样本" min-width="80" />
+              <el-table-column prop="status" label="状态" min-width="100" />
+              <el-table-column prop="annotation_format" label="标注格式" min-width="120" />
+              <el-table-column label="操作" width="240">
+                <template #default="scope">
+                  <el-button text @click="openSamplesDrawer(scope.row)">样本</el-button>
+                  <el-button text :disabled="!canUpload" @click="handleSplitImport(scope.row)">70/15/15 划分</el-button>
+                  <el-button text :disabled="!canUpload" @click="selectedImport = scope.row; openEvaluationDialog()">评估</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
+
+          <el-tab-pane label="模型评估" name="evaluations">
+            <div class="dataset-tab-note">只记录评估结果和备注，不在这里训练模型。</div>
+            <el-empty v-if="evaluations.length === 0" description="暂无模型评估记录" />
+            <el-table v-else :data="evaluations" stripe>
+              <el-table-column prop="model_name" label="模型" min-width="130" />
+              <el-table-column prop="model_version" label="版本" min-width="100" />
+              <el-table-column label="mAP" min-width="80">
+                <template #default="scope">{{ scope.row.map_score ?? '-' }}</template>
+              </el-table-column>
+              <el-table-column label="F1" min-width="80">
+                <template #default="scope">{{ scope.row.f1_score ?? '-' }}</template>
+              </el-table-column>
+              <el-table-column prop="sample_count" label="样本" min-width="80" />
+            </el-table>
+          </el-tab-pane>
+        </el-tabs>
+      </el-card>
+
     </template>
 
     <el-drawer v-model="detailVisible" title="数据集详情" size="520px">
@@ -319,6 +575,34 @@ onMounted(async () => {
           <el-tag v-for="disease in selectedDataset.disease_tags" :key="disease" type="warning">{{ disease }}</el-tag>
         </div>
       </div>
+    </el-drawer>
+
+    <el-drawer v-model="samplesDrawerVisible" title="样本索引" size="680px">
+      <el-empty v-if="!selectedImport" description="请选择导入批次" />
+      <template v-else>
+        <div class="dataset-brief-row">
+          <span>{{ selectedImport.import_method }}</span>
+          <span>{{ selectedImport.sample_count }} 个样本</span>
+          <span>{{ selectedImport.status }}</span>
+        </div>
+        <el-skeleton v-if="samplesLoading" :rows="5" animated />
+        <el-table v-else :data="samples" stripe>
+          <el-table-column prop="filename" label="文件名" min-width="240" />
+          <el-table-column prop="file_type" label="类型" min-width="90" />
+          <el-table-column prop="annotation_status" label="标注" min-width="100" />
+          <el-table-column prop="split" label="划分" min-width="80" />
+        </el-table>
+        <div class="pagination-row">
+          <el-pagination
+            background
+            layout="total, prev, pager, next"
+            :current-page="Math.floor(samplesPagination.offset / samplesPagination.limit) + 1"
+            :page-size="samplesPagination.limit"
+            :total="samplesPagination.total"
+            @current-change="async (page: number) => { samplesPagination.offset = (page - 1) * samplesPagination.limit; await refreshSamples() }"
+          />
+        </div>
+      </template>
     </el-drawer>
 
     <el-dialog v-model="dialogVisible" :title="editingDataset ? '编辑数据集登记' : '新增数据集登记'" width="680px">
@@ -397,6 +681,88 @@ onMounted(async () => {
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" :disabled="!canUpload" @click="submitDataset">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="importDialogVisible" title="新建数据导入批次" width="620px">
+      <el-form label-position="top">
+        <el-form-item label="导入方式">
+          <el-select v-model="importForm.import_method" class="w-full">
+            <el-option label="本地目录登记" value="local_directory" />
+            <el-option label="ZIP 样本包上传" value="zip_upload" />
+            <el-option label="手动统计录入" value="manual_summary" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="importForm.import_method !== 'manual_summary'" label="来源路径 / 说明">
+          <el-input v-model="importForm.source_path" placeholder="例如 D:\\datasets\\dentex 或样本包来源说明" />
+        </el-form-item>
+        <el-form-item v-if="importForm.import_method === 'zip_upload'" label="ZIP 样本包">
+          <el-upload :auto-upload="false" :limit="1" :on-change="handleZipChange">
+            <el-button type="primary" plain>选择 zip</el-button>
+          </el-upload>
+        </el-form-item>
+        <div class="dialog-form-grid">
+          <el-form-item label="样本数量">
+            <el-input-number v-model="importForm.sample_count" class="w-full" :min="0" controls-position="right" />
+          </el-form-item>
+          <el-form-item label="影像类型">
+            <el-select v-model="importForm.image_type" class="w-full">
+              <el-option label="全景片" value="panoramic" />
+              <el-option label="根尖片" value="periapical" />
+              <el-option label="CBCT" value="cbct" />
+              <el-option label="混合" value="mixed" />
+            </el-select>
+          </el-form-item>
+        </div>
+        <el-form-item label="标注格式">
+          <el-input v-model="importForm.annotation_format" placeholder="例如 COCO / masks / labels" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="importForm.notes" type="textarea" :rows="3" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="importDialogVisible = false">取消</el-button>
+        <el-button type="primary" :disabled="!canUpload" @click="submitImport">创建</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="evaluationDialogVisible" title="新增模型评估记录" width="620px">
+      <el-form label-position="top">
+        <div class="dialog-form-grid">
+          <el-form-item label="模型名称">
+            <el-input v-model="evaluationForm.model_name" placeholder="例如 YOLOv8 Dental Baseline" />
+          </el-form-item>
+          <el-form-item label="模型版本">
+            <el-input v-model="evaluationForm.model_version" placeholder="例如 v0.1" />
+          </el-form-item>
+        </div>
+        <div class="dialog-form-grid">
+          <el-form-item label="Precision">
+            <el-input-number v-model="evaluationForm.precision" class="w-full" :min="0" :max="1" :step="0.01" />
+          </el-form-item>
+          <el-form-item label="Recall">
+            <el-input-number v-model="evaluationForm.recall" class="w-full" :min="0" :max="1" :step="0.01" />
+          </el-form-item>
+        </div>
+        <div class="dialog-form-grid">
+          <el-form-item label="mAP">
+            <el-input-number v-model="evaluationForm.map_score" class="w-full" :min="0" :max="1" :step="0.01" />
+          </el-form-item>
+          <el-form-item label="F1">
+            <el-input-number v-model="evaluationForm.f1_score" class="w-full" :min="0" :max="1" :step="0.01" />
+          </el-form-item>
+        </div>
+        <el-form-item label="样本数量">
+          <el-input-number v-model="evaluationForm.sample_count" class="w-full" :min="0" controls-position="right" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="evaluationForm.notes" type="textarea" :rows="3" placeholder="评估集、训练设置、失败原因等" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="evaluationDialogVisible = false">取消</el-button>
+        <el-button type="primary" :disabled="!canUpload" @click="submitEvaluation">保存</el-button>
       </template>
     </el-dialog>
   </div>

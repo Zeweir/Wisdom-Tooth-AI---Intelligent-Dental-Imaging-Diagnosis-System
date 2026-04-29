@@ -16,6 +16,29 @@ const currentStatusLabel = computed(() => (props.currentRecord ? getReportStatus
 const currentStatusTagType = computed(() => (props.currentRecord ? getReportStatusTagType(props.currentRecord.report.status) : 'info'))
 const reviewTextLength = computed(() => reviewText.value.trim().length)
 const reportTextLength = computed(() => props.currentRecord?.report.content.length ?? 0)
+const reportSteps = computed(() => {
+  const status = props.currentRecord?.report.status
+  return [
+    {
+      key: 'draft',
+      title: '报告草稿',
+      description: 'AI 已根据影像和检测结果生成初稿',
+      done: status !== 'processing',
+    },
+    {
+      key: 'review',
+      title: '医生意见',
+      description: props.currentRecord?.report.doctor_review ? '已保存医生审核意见' : '等待医生补充判断',
+      done: status === 'doctor_reviewed' || status === 'finalized',
+    },
+    {
+      key: 'archive',
+      title: '确认归档',
+      description: status === 'finalized' ? '已形成正式报告' : '主任医生确认后归档',
+      done: status === 'finalized',
+    },
+  ]
+})
 
 const emit = defineEmits<{
   submit: []
@@ -115,36 +138,45 @@ function handleExportHtml() {
 
     <el-empty v-if="!currentRecord" description="请选择一条分析记录" />
     <template v-else>
-      <div class="report-box">
+      <div class="report-workflow-card">
+        <div
+          v-for="step in reportSteps"
+          :key="step.key"
+          class="report-workflow-step"
+          :class="{ done: step.done }"
+        >
+          <span aria-hidden="true" />
+          <strong>{{ step.title }}</strong>
+          <small>{{ step.description }}</small>
+        </div>
+      </div>
+
+      <article class="report-box clinical-report-draft">
         <div class="panel-header">
-          <span>AI 初步诊断意见</span>
-          <el-tag type="info">{{ reportTextLength }} 字</el-tag>
+          <span>报告草稿</span>
+          <div class="section-heading-tags">
+            <el-tag :type="currentStatusTagType">{{ currentStatusLabel }}</el-tag>
+            <el-tag type="info">{{ reportTextLength }} 字</el-tag>
+          </div>
         </div>
         <p>{{ currentRecord.report.content }}</p>
-      </div>
-      <div class="report-box">
+      </article>
+
+      <div class="report-box compact-report-meta">
         <div class="panel-header">
-          <span>诊断报告流程</span>
-          <el-tag :type="currentStatusTagType">{{ currentStatusLabel }}</el-tag>
+          <span>病例要点</span>
+          <el-tag type="success">{{ currentRecord.detections.length }} 个病灶</el-tag>
         </div>
-        <div class="diagnosis-steps">
-          <div class="diagnosis-step">
-            <strong>AI 生成</strong>
-            <span>结构化结果转诊断初稿</span>
-          </div>
-          <div class="diagnosis-step">
-            <strong>医生审核</strong>
-            <span>{{ currentRecord.report.doctor_review ? '已填写审核意见' : '等待医生补充' }}</span>
-          </div>
-          <div class="diagnosis-step">
-            <strong>正式确认</strong>
-            <span>{{ currentRecord.report.status === 'finalized' ? '已完成' : '需主任医生确认' }}</span>
-          </div>
+        <div class="report-meta-strip">
+          <span>{{ currentRecord.patient?.name ?? currentRecord.patient_id }}</span>
+          <span>{{ currentRecord.filename }}</span>
+          <span>{{ currentRecord.report.status === 'finalized' ? '已归档' : '待完成' }}</span>
         </div>
       </div>
+
       <div class="report-box">
         <div class="panel-header">
-          <span>医生补充意见</span>
+          <span>医生意见</span>
           <el-tag type="success">{{ reviewTextLength }} 字</el-tag>
         </div>
         <el-input
@@ -154,7 +186,7 @@ function handleExportHtml() {
           placeholder="例如：AI诊断基本准确，建议补充根尖片确认根尖状态"
         />
       </div>
-      <div class="actions">
+      <div class="actions report-action-bar">
         <el-button type="primary" :disabled="!canSubmit" @click="emit('submit')">保存审核意见</el-button>
         <el-button type="success" :disabled="!canFinalize" @click="emit('finalize')">确认为正式报告</el-button>
         <el-button :disabled="!currentRecord" @click="handlePrintReport">打印预览</el-button>

@@ -51,6 +51,38 @@ class StorageService:
         suffix = Path(filename or 'image.bin').suffix or '.bin'
         return f'images/{uuid4()}{suffix}'
 
+    def build_dataset_object_key(self, filename: str) -> str:
+        suffix = Path(filename or 'dataset.zip').suffix or '.zip'
+        return f'datasets/{uuid4()}{suffix}'
+
+    def save_dataset_file(self, *, file_bytes: bytes, filename: str, content_type: str | None) -> StoredObject:
+        object_key = self.build_dataset_object_key(filename)
+        if self.provider == 'minio' and self.minio_client is not None:
+            self.ensure_bucket()
+            self.minio_client.put_object(
+                MINIO_BUCKET,
+                object_key,
+                BytesIO(file_bytes),
+                len(file_bytes),
+                content_type=content_type or 'application/octet-stream',
+            )
+            return StoredObject(
+                provider='minio',
+                bucket=MINIO_BUCKET,
+                object_key=object_key,
+                file_path=object_key,
+            )
+
+        target_path = UPLOAD_DIR / object_key
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_bytes(file_bytes)
+        return StoredObject(
+            provider='local',
+            bucket=None,
+            object_key=object_key,
+            file_path=str(target_path.relative_to(BASE_DIR)),
+        )
+
     def save_upload(self, *, file_bytes: bytes, filename: str, content_type: str | None) -> StoredObject:
         object_key = self.build_object_key(filename)
         if self.provider == 'minio' and self.minio_client is not None:

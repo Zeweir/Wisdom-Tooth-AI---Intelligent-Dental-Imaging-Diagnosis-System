@@ -239,3 +239,111 @@ class DatasetCatalogUpdateRequest(BaseModel):
     access_status: str | None = None
     priority: str | None = None
     notes: str | None = None
+
+
+class DatasetImportPayload(BaseModel):
+    import_id: str
+    dataset_id: str
+    import_method: str
+    source_path: str | None
+    storage_provider: str | None
+    storage_bucket: str | None
+    storage_object_key: str | None
+    sample_count: int
+    annotation_format: str | None
+    image_type: str
+    status: str
+    error_message: str | None
+    notes: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class DatasetImportListResponse(BaseModel):
+    code: int
+    data: list[DatasetImportPayload]
+    meta: PaginationMeta
+
+
+class DatasetImportResponse(BaseModel):
+    code: int
+    data: DatasetImportPayload
+
+
+class DatasetImportCreateRequest(BaseModel):
+    import_method: Literal['local_directory', 'zip_upload', 'manual_summary']
+    source_path: str | None = None
+    sample_count: int = Field(default=0, ge=0)
+    annotation_format: str | None = None
+    image_type: str = 'panoramic'
+    notes: str | None = None
+
+
+class DatasetSamplePayload(BaseModel):
+    sample_id: str
+    import_id: str
+    dataset_id: str
+    filename: str
+    file_type: str
+    image_type: str
+    annotation_status: str
+    split: str | None
+    label_summary: dict[str, Any]
+    storage_object_key: str | None
+    created_at: datetime
+
+
+class DatasetSampleListResponse(BaseModel):
+    code: int
+    data: list[DatasetSamplePayload]
+    meta: PaginationMeta
+
+
+class DatasetSplitRequest(BaseModel):
+    train_ratio: float = Field(default=0.7, ge=0.0, le=1.0)
+    val_ratio: float = Field(default=0.15, ge=0.0, le=1.0)
+    test_ratio: float = Field(default=0.15, ge=0.0, le=1.0)
+
+
+class DatasetSplitResponse(BaseModel):
+    code: int
+    data: dict[str, int]
+
+
+class ModelEvaluationPayload(BaseModel):
+    evaluation_id: str
+    model_name: str
+    model_version: str
+    dataset_id: str | None
+    import_id: str | None
+    precision: float | None
+    recall: float | None
+    map_score: float | None
+    f1_score: float | None
+    sample_count: int | None
+    notes: str | None
+    created_at: datetime
+
+
+class ModelEvaluationListResponse(BaseModel):
+    code: int
+    data: list[ModelEvaluationPayload]
+    meta: PaginationMeta
+
+
+class ModelEvaluationResponse(BaseModel):
+    code: int
+    data: ModelEvaluationPayload
+
+
+class ModelEvaluationCreateRequest(BaseModel):
+    model_name: str
+    model_version: str
+    dataset_id: str | None = None
+    import_id: str | None = None
+    precision: float | None = Field(default=None, ge=0.0, le=1.0)
+    recall: float | None = Field(default=None, ge=0.0, le=1.0)
+    map_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    f1_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    sample_count: int | None = Field(default=None, ge=0)
+    notes: str | None = None

@@ -9,13 +9,15 @@ const workbench = useWorkbenchContext()
 const navigationItems = workbench.navigationItems
 const displayName = workbench.displayName
 const displayedRoles = workbench.displayedRoles
-const authScopes = workbench.authScopes
 const authProfile = workbench.authProfile
 const isAuthenticated = workbench.isAuthenticated
 const isLoading = workbench.isLoading
 const authReady = workbench.authReady
 const beginSignIn = workbench.beginSignIn
 const beginSignOut = workbench.beginSignOut
+
+const primaryNavigationItems = computed(() => navigationItems.value.filter((item) => item.key !== 'system'))
+const systemNavigationItem = computed(() => navigationItems.value.find((item) => item.key === 'system'))
 
 const currentNavKey = computed(() => {
   if (route.path === '/access' || route.path === '/audit') {
@@ -51,7 +53,7 @@ const permissionSummary = computed(() => {
 
           <nav class="top-nav" aria-label="主导航">
             <RouterLink
-              v-for="item in navigationItems"
+              v-for="item in primaryNavigationItems"
               :key="item.key"
               :to="item.to"
               class="top-nav-item"
@@ -64,7 +66,15 @@ const permissionSummary = computed(() => {
 
         <div class="topbar-actions">
           <el-tag v-if="isAuthenticated" type="primary">{{ displayName || '已登录' }}</el-tag>
-          <el-tag v-for="role in displayedRoles" :key="role.key" type="warning">{{ role.label }}</el-tag>
+          <el-tag v-if="displayedRoles[0]" type="warning">{{ displayedRoles[0].label }}</el-tag>
+          <RouterLink
+            v-if="systemNavigationItem"
+            :to="systemNavigationItem.to"
+            class="top-nav-item system-nav-link"
+            :class="{ active: currentNavKey === 'system' }"
+          >
+            系统
+          </RouterLink>
           <el-button v-if="!isAuthenticated" type="primary" :loading="isLoading" @click="beginSignIn">登录</el-button>
           <el-button v-else @click="beginSignOut">退出</el-button>
         </div>
@@ -82,7 +92,7 @@ const permissionSummary = computed(() => {
 
         <details v-else-if="isAuthenticated && authReady" class="debug-permission-panel">
           <summary>
-            当前角色：{{ displayedRoles.map((item) => item.label).join(', ') || '未匹配到预设角色' }}；权限数：{{ authScopes.length }}
+            账号权限状态
           </summary>
           <div>{{ permissionSummary }}</div>
         </details>

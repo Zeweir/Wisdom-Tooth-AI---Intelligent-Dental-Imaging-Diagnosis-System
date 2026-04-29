@@ -12,7 +12,17 @@ from app.audit import count_audit_logs, create_user_audit_log, list_audit_logs, 
 from app.auth import AuthInfo, authorize_websocket, build_auth_profile, build_rbac_model_payload, ensure_scopes, require_api_auth
 from app.config import ALLOWED_ORIGINS
 from app.database import SessionLocal, get_db
+from app.dataset_imports import (
+    create_dataset_import,
+    get_import_or_404,
+    index_zip_upload,
+    list_dataset_imports,
+    list_import_samples,
+    serialize_dataset_import,
+    split_import_samples,
+)
 from app.datasets import create_dataset, get_dataset_or_404, get_dataset_summary, list_datasets, seed_public_datasets, serialize_dataset, update_dataset
+from app.model_evaluations import create_model_evaluation, list_model_evaluations, serialize_model_evaluation
 from app.models import AuditLogRecord, ImageRecord, PatientRecord, ReportRecord
 from app.patients import (
     create_patient,
@@ -33,8 +43,17 @@ from app.schemas import (
     DatasetCatalogListResponse,
     DatasetCatalogResponse,
     DatasetCatalogUpdateRequest,
+    DatasetImportCreateRequest,
+    DatasetImportListResponse,
+    DatasetImportResponse,
+    DatasetSampleListResponse,
+    DatasetSplitRequest,
+    DatasetSplitResponse,
     DatasetSeedResponse,
     ImageType,
+    ModelEvaluationCreateRequest,
+    ModelEvaluationListResponse,
+    ModelEvaluationResponse,
     PatientCreateRequest,
     PatientListResponse,
     PatientResponse,
@@ -242,6 +261,136 @@ def put_dataset(
     db.commit()
     db.refresh(dataset)
     return {"code": 200, "data": serialize_dataset(dataset)}
+
+
+@app.get("/api/v1/datasets/{dataset_id}/imports", response_model=DatasetImportListResponse)
+def get_dataset_imports(
+    dataset_id: str,
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _: AuthInfo = Depends(require_api_auth('read:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    items, total = list_dataset_imports(db, dataset_id=dataset_id, limit=limit, offset=offset)
+    return {"code": 200, "data": items, "meta": {"limit": limit, "offset": offset, "total": total}}
+
+
+@app.post("/api/v1/datasets/{dataset_id}/imports", response_model=DatasetImportResponse)
+def post_dataset_import(
+    dataset_id: str,
+    payload: DatasetImportCreateRequest,
+    auth: AuthInfo = Depends(require_api_auth('upload:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    item = create_dataset_import(db, dataset_id=dataset_id, payload=payload)
+    create_user_audit_log(
+        db,
+        auth=auth,
+        action='dataset_import.created',
+        resource_type='dataset_import',
+        resource_id=item.import_id,
+        detail={'dataset_id': dataset_id, 'import_method': item.import_method, 'sample_count': item.sample_count},
+    )
+    db.commit()
+    db.refresh(item)
+    return {"code": 200, "data": serialize_dataset_import(item)}
+
+
+@app.post("/api/v1/dataset-imports/{import_id}/upload-zip", response_model=DatasetImportResponse)
+async def post_dataset_import_zip(
+    import_id: str,
+    file: UploadFile = File(...),
+    auth: AuthInfo = Depends(require_api_auth('upload:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    item = get_import_or_404(db, import_id)
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail='上传样本包为空')
+    if not (file.filename or '').lower().endswith('.zip'):
+        raise HTTPException(status_code=400, detail='当前仅支持 zip 样本包')
+    stored_object = storage_service.save_dataset_file(
+        file_bytes=file_bytes,
+        filename=file.filename or 'dataset.zip',
+        content_type=file.content_type,
+    )
+    indexed = index_zip_upload(db, item=item, file_bytes=file_bytes, stored_object=stored_object)
+    create_user_audit_log(
+        db,
+        auth=auth,
+        action='dataset_import.zip_uploaded',
+        resource_type='dataset_import',
+        resource_id=item.import_id,
+        detail={'indexed': indexed, 'filename': file.filename, 'storage_object_key': stored_object.object_key},
+    )
+    db.commit()
+    db.refresh(item)
+    return {"code": 200, "data": serialize_dataset_import(item)}
+
+
+@app.get("/api/v1/dataset-imports/{import_id}/samples", response_model=DatasetSampleListResponse)
+def get_dataset_import_samples(
+    import_id: str,
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _: AuthInfo = Depends(require_api_auth('read:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    items, total = list_import_samples(db, import_id=import_id, limit=limit, offset=offset)
+    return {"code": 200, "data": items, "meta": {"limit": limit, "offset": offset, "total": total}}
+
+
+@app.post("/api/v1/dataset-imports/{import_id}/split", response_model=DatasetSplitResponse)
+def post_dataset_import_split(
+    import_id: str,
+    payload: DatasetSplitRequest,
+    auth: AuthInfo = Depends(require_api_auth('upload:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    counts = split_import_samples(db, import_id=import_id, payload=payload)
+    create_user_audit_log(
+        db,
+        auth=auth,
+        action='dataset_import.split_created',
+        resource_type='dataset_import',
+        resource_id=import_id,
+        detail=counts,
+    )
+    db.commit()
+    return {"code": 200, "data": counts}
+
+
+@app.get("/api/v1/model-evaluations", response_model=ModelEvaluationListResponse)
+def get_model_evaluations(
+    dataset_id: str | None = Query(default=None),
+    import_id: str | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _: AuthInfo = Depends(require_api_auth('read:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    items, total = list_model_evaluations(db, dataset_id=dataset_id, import_id=import_id, limit=limit, offset=offset)
+    return {"code": 200, "data": items, "meta": {"limit": limit, "offset": offset, "total": total}}
+
+
+@app.post("/api/v1/model-evaluations", response_model=ModelEvaluationResponse)
+def post_model_evaluation(
+    payload: ModelEvaluationCreateRequest,
+    auth: AuthInfo = Depends(require_api_auth('upload:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    item = create_model_evaluation(db, payload)
+    create_user_audit_log(
+        db,
+        auth=auth,
+        action='model_evaluation.created',
+        resource_type='model_evaluation',
+        resource_id=item.evaluation_id,
+        detail={'model_name': item.model_name, 'model_version': item.model_version, 'dataset_id': item.dataset_id},
+    )
+    db.commit()
+    db.refresh(item)
+    return {"code": 200, "data": serialize_model_evaluation(item)}
 
 
 @app.get("/api/v1/patients", response_model=PatientListResponse)

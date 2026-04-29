@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { AnalysisFilters, AnalysisItem, PaginationMeta } from '../types/analysis'
+import type { AnalysisFilters, AnalysisItem, PaginationMeta, ReportStatus } from '../types/analysis'
 import { getImageTypeLabel, getReportStatusLabel, getReportStatusTagType } from '../utils/display'
 
 const props = defineProps<{
@@ -21,6 +21,40 @@ const emit = defineEmits<{
 
 const finalizedCount = computed(() => props.records.filter((record) => record.report.status === 'finalized').length)
 const pendingCount = computed(() => props.records.filter((record) => record.report.status !== 'finalized').length)
+const statusPriority: Record<ReportStatus, number> = {
+  processing: 0,
+  ai_generated: 1,
+  doctor_reviewed: 2,
+  finalized: 3
+}
+const statusClassMap: Record<ReportStatus, string> = {
+  processing: 'is-processing',
+  ai_generated: 'needs-review',
+  doctor_reviewed: 'needs-finalize',
+  finalized: 'is-finalized'
+}
+const sortedRecords = computed(() =>
+  [...props.records].sort((first, second) => {
+    const priorityDiff = statusPriority[first.report.status] - statusPriority[second.report.status]
+    if (priorityDiff !== 0) {
+      return priorityDiff
+    }
+    return new Date(second.created_at).getTime() - new Date(first.created_at).getTime()
+  })
+)
+
+function getQueueHint(record: AnalysisItem) {
+  if (record.report.status === 'processing') {
+    return '等待 AI 分析'
+  }
+  if (record.report.status === 'ai_generated') {
+    return '需要医生审核'
+  }
+  if (record.report.status === 'doctor_reviewed') {
+    return '等待正式确认'
+  }
+  return '已归档'
+}
 </script>
 
 <template>
@@ -70,15 +104,15 @@ const pendingCount = computed(() => props.records.filter((record) => record.repo
     <el-empty v-if="props.records.length === 0" description="暂无记录，请先上传影像" />
     <div v-else class="record-list">
       <button
-        v-for="record in props.records"
+        v-for="record in sortedRecords"
         :key="record.image_id"
         class="record-item"
-        :class="{ active: props.selectedImageId === record.image_id }"
+        :class="[statusClassMap[record.report.status], { active: props.selectedImageId === record.image_id }]"
         @click="emit('select', record.image_id)"
       >
         <div class="record-main">
           <strong>{{ record.patient?.name ?? record.patient_id }}</strong>
-          <span>{{ getImageTypeLabel(record.image_type) }}</span>
+          <span>{{ getQueueHint(record) }}</span>
         </div>
         <div v-if="record.patient?.name" class="record-secondary">患者编号：{{ record.patient_id }}</div>
         <div class="record-secondary">{{ record.filename }}</div>

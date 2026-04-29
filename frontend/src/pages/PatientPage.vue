@@ -179,8 +179,8 @@ onMounted(async () => {
     <section class="medical-page-header">
       <div>
         <div class="overview-pill">患者档案</div>
-        <h2>按患者归档影像与报告</h2>
-        <p>管理患者基础信息，查看历史影像、报告状态和最近病例时间线。</p>
+        <h2>先找到患者，再查看历史病例。</h2>
+        <p>患者页只做两件事：维护基础档案，快速回到对应影像报告。</p>
       </div>
     </section>
 
@@ -196,7 +196,7 @@ onMounted(async () => {
       <el-card class="panel" shadow="never">
         <template #header>
           <div class="panel-header">
-            <span>患者列表</span>
+            <span>患者</span>
             <el-button v-if="canUpload" type="primary" plain @click="openCreateDialog">新建患者</el-button>
           </div>
         </template>
@@ -278,7 +278,7 @@ onMounted(async () => {
         <el-card class="panel" shadow="never">
           <template #header>
             <div class="panel-header">
-              <span>病例时间线</span>
+              <span>历史病例</span>
               <el-tag v-if="selectedPatient" type="info">{{ patientImages.length }} 条</el-tag>
             </div>
           </template>
@@ -295,9 +295,13 @@ onMounted(async () => {
                 <el-tag :type="getReportStatusTagType(image.report.status)">{{ getReportStatusLabel(image.report.status) }}</el-tag>
               </div>
               <div class="record-meta">
-                <el-tag size="small" type="success">{{ image.detections.length }} 个病灶</el-tag>
-                <el-tag size="small">{{ new Date(image.created_at).toLocaleString() }}</el-tag>
-                <RouterLink :to="`/workspace`" class="el-button el-button--primary is-plain"><span>到工作站查看</span></RouterLink>
+                <span class="timeline-meta-text">{{ image.detections.length }} 个病灶 / {{ new Date(image.created_at).toLocaleString() }}</span>
+                <RouterLink
+                  :to="{ path: '/workspace', query: { image_id: image.image_id } }"
+                  class="el-button el-button--primary is-plain"
+                >
+                  <span>打开病例</span>
+                </RouterLink>
               </div>
             </div>
           </div>

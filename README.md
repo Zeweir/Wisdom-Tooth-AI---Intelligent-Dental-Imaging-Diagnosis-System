@@ -134,7 +134,7 @@ VITE_LOGTO_API_RESOURCE=https://api.wisdom-tooth-ai.local
 docker compose up --build
 ```
 
-Docker 前端会通过 nginx 代理访问后端 `/api`，不会读取 `frontend/.env.local` 中的 `VITE_API_BASE_URL`。本地 `npm run dev` 才使用 `.env.local` 直连开发后端；如果浏览器请求 `http://127.0.0.1:8000/api/...` 返回了其他项目内容，说明当前不是 Docker 前端代理路径，应改访问 `http://127.0.0.1:5173`。
+Docker 前端构建会读取 `frontend/.env.local` 中的 Logto 配置，尤其是 `VITE_LOGTO_APP_ID`。如果该文件把 `VITE_API_BASE_URL` 写成 `http://127.0.0.1:8000`，浏览器会直连宿主机 8000；如需统一走前端 nginx 代理，可将 `VITE_API_BASE_URL` 留空并重新构建。
 
 启动后访问：
 
@@ -167,6 +167,13 @@ Docker 前端会通过 nginx 代理访问后端 `/api`，不会读取 `frontend/
 - `POST /api/v1/datasets/seed-public`
 - `GET /api/v1/datasets/{dataset_id}`
 - `PUT /api/v1/datasets/{dataset_id}`
+- `GET /api/v1/datasets/{dataset_id}/imports`
+- `POST /api/v1/datasets/{dataset_id}/imports`
+- `POST /api/v1/dataset-imports/{import_id}/upload-zip`
+- `GET /api/v1/dataset-imports/{import_id}/samples`
+- `POST /api/v1/dataset-imports/{import_id}/split`
+- `GET /api/v1/model-evaluations`
+- `POST /api/v1/model-evaluations`
 - `POST /api/v1/images/upload`
 - `GET /api/v1/images`
 - `GET /api/v1/analysis/{image_id}`
@@ -196,6 +203,7 @@ Docker 前端会通过 nginx 代理访问后端 `/api`，不会读取 `frontend/
 - 已支持影像列表、审计日志分页查询与工作台摘要统计
 - 已支持患者档案、患者搜索、病例时间线和上传时自动建档
 - 已支持公开数据集登记、seed 初始化、筛选和数据准备指标
+- 已支持数据集导入批次、样本索引、训练集划分和模型评估记录
 - 前端已支持报告 HTML 导出、浏览器打印预览和影像检测框叠加展示
 - 提供 `docker-compose.yml` 支持数据库、后端、前端一键启动
 

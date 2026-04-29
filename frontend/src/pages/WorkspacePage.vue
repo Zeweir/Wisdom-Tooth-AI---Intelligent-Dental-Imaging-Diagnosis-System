@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
+
 import AnalysisDetailPanel from '../components/AnalysisDetailPanel.vue'
 import RecordListPanel from '../components/RecordListPanel.vue'
 import ReportReviewPanel from '../components/ReportReviewPanel.vue'
@@ -7,6 +10,7 @@ import UploadPanel from '../components/UploadPanel.vue'
 import { getReportStatusLabel } from '../utils/display'
 import { useWorkbenchContext } from '../workbench'
 
+const route = useRoute()
 const workbench = useWorkbenchContext()
 const isAuthenticated = workbench.isAuthenticated
 const authReady = workbench.authReady
@@ -33,15 +37,45 @@ const fetchAnalysisRecord = workbench.fetchAnalysisRecord
 const handleUpload = workbench.handleUpload
 const handleReviewSubmit = workbench.handleReviewSubmit
 const handleFinalizeSubmit = workbench.handleFinalizeSubmit
+
+function getRouteImageId() {
+  const value = route.query.image_id
+  return Array.isArray(value) ? value[0] : value
+}
+
+async function openLinkedCase() {
+  const imageId = getRouteImageId()
+  if (!imageId || !canReadImages.value) {
+    return
+  }
+  await fetchAnalysisRecord(imageId)
+}
+
+watch(
+  () => route.query.image_id,
+  async () => {
+    await openLinkedCase()
+  }
+)
+
+watch(canReadImages, async (value) => {
+  if (value) {
+    await openLinkedCase()
+  }
+})
+
+onMounted(async () => {
+  await openLinkedCase()
+})
 </script>
 
 <template>
   <div class="page-stack">
-    <section class="medical-page-header compact-page-header">
+    <section class="medical-page-header compact-page-header workbench-intro">
       <div>
         <div class="overview-pill">影像工作站</div>
-        <h2>病例队列 → AI 判读 → 报告审核</h2>
-        <p>按顺序完成当前病例，不需要在多个页面之间来回切换。</p>
+        <h2>选择病例，查看影像，完成报告。</h2>
+        <p>医生只需要顺着三栏从左到右处理：病例队列、AI 判读、报告审核。</p>
       </div>
     </section>
 
@@ -57,13 +91,15 @@ const handleFinalizeSubmit = workbench.handleFinalizeSubmit
       <section class="clinical-workbench-grid">
         <div class="workbench-column case-column">
           <div class="step-heading"><span>1</span><strong>选择病例</strong><el-button v-if="canReadImages" text @click="fetchRecords">刷新</el-button></div>
-          <UploadPanel
-            v-if="canUpload"
-            v-model:loading="loading"
-            v-model:socket-events="socketEvents"
-            :can-upload="canUpload"
-            @submit="handleUpload"
-          />
+          <details v-if="canUpload" class="compact-details create-case-details">
+            <summary>新增病例 / 上传影像</summary>
+            <UploadPanel
+              v-model:loading="loading"
+              v-model:socket-events="socketEvents"
+              :can-upload="canUpload"
+              @submit="handleUpload"
+            />
+          </details>
 
           <UnauthorizedPanel
             v-else

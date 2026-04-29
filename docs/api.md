@@ -84,6 +84,40 @@
 - 需要 `upload:images`。
 - 更新数据集登记字段。
 
+- `GET /api/v1/datasets/{dataset_id}/imports`
+- 需要 `read:images`。
+- 返回该数据集的导入批次。
+
+- `POST /api/v1/datasets/{dataset_id}/imports`
+- 需要 `upload:images`。
+- Body：`import_method`、`source_path`、`sample_count`、`annotation_format`、`image_type`、`notes`。
+- 支持 `local_directory`、`zip_upload`、`manual_summary`。
+
+- `POST /api/v1/dataset-imports/{import_id}/upload-zip`
+- 需要 `upload:images`。
+- FormData：`file`，仅支持 zip 样本包；第一版只做存储和文件名索引。
+
+- `GET /api/v1/dataset-imports/{import_id}/samples`
+- 需要 `read:images`。
+- Query：`limit`、`offset`。
+- 返回样本索引列表。
+
+- `POST /api/v1/dataset-imports/{import_id}/split`
+- 需要 `upload:images`。
+- Body：`train_ratio`、`val_ratio`、`test_ratio`。
+- 默认按 `70/15/15` 写入样本划分标记。
+
+## 模型评估
+
+- `GET /api/v1/model-evaluations`
+- 需要 `read:images`。
+- Query：`dataset_id`、`import_id`、`limit`、`offset`。
+- 返回模型评估记录。
+
+- `POST /api/v1/model-evaluations`
+- 需要 `upload:images`。
+- Body：`model_name`、`model_version`、`dataset_id`、`import_id`、`precision`、`recall`、`map_score`、`f1_score`、`sample_count`、`notes`。
+
 ## 影像与分析
 
 - `GET /api/v1/images`
