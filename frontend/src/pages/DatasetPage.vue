@@ -199,11 +199,11 @@ onMounted(async () => {
 
 <template>
   <div class="page-stack">
-    <section class="medical-page-header">
+    <section class="medical-page-header compact-page-header">
       <div>
         <div class="overview-pill">数据集中心</div>
-        <h2>公开牙科影像数据集登记</h2>
-        <p>维护公开来源、许可、任务类型和病种标签，为后续训练、评估和论文说明建立数据底座。</p>
+        <h2>为模型训练准备公开数据来源</h2>
+        <p>先登记来源和许可，不下载真实影像。推荐从 DENTEX、OdontoAI 和 Tufts 开始。</p>
       </div>
     </section>
 
@@ -216,42 +216,46 @@ onMounted(async () => {
     </UnauthorizedPanel>
 
     <template v-else>
-      <section class="patient-summary-grid">
-        <div class="clinical-metric">
-          <div class="metric-value">{{ pagination.total }}</div>
-          <div class="metric-label">数据集登记</div>
-        </div>
-        <div class="clinical-metric">
-          <div class="metric-value">{{ openDatasetCount }}</div>
-          <div class="metric-label">可访问来源</div>
-        </div>
-        <div class="clinical-metric">
-          <div class="metric-value">{{ totalDiseaseTags }}</div>
-          <div class="metric-label">覆盖标签</div>
-        </div>
-      </section>
-
       <el-card class="panel" shadow="never">
         <template #header>
           <div class="panel-header">
-            <span>数据准备清单</span>
+            <span>推荐公开清单</span>
             <div class="quick-action-row">
-              <el-button v-if="canUpload" plain @click="handleSeedPublicDatasets">初始化公开清单</el-button>
-              <el-button v-if="canUpload" type="primary" @click="openCreateDialog">新增登记</el-button>
+              <el-tooltip v-if="!canUpload" content="需要 upload:images 权限" placement="top">
+                <span><el-button type="primary" disabled>初始化公开清单</el-button></span>
+              </el-tooltip>
+              <el-button v-else type="primary" @click="handleSeedPublicDatasets">初始化公开清单</el-button>
+              <el-button v-if="canUpload" plain @click="openCreateDialog">新增登记</el-button>
             </div>
           </div>
         </template>
 
-        <div class="dataset-filter-row">
-          <el-input v-model="filters.keyword" placeholder="搜索名称、来源或备注" clearable @keyup.enter="applyFilters" />
-          <el-input v-model="filters.task_type" placeholder="任务类型，如 segmentation" clearable @keyup.enter="applyFilters" />
-          <el-input v-model="filters.disease" placeholder="病种标签，如 caries" clearable @keyup.enter="applyFilters" />
-          <el-button type="primary" @click="applyFilters">筛选</el-button>
-          <el-button @click="resetFilters">重置</el-button>
+        <div class="dataset-brief-row">
+          <span>{{ pagination.total }} 个数据集</span>
+          <span>{{ openDatasetCount }} 个可访问来源</span>
+          <span>{{ totalDiseaseTags }} 类标签</span>
         </div>
 
+        <details class="compact-details">
+          <summary>搜索和筛选</summary>
+          <div class="dataset-filter-row">
+            <el-input v-model="filters.keyword" placeholder="搜索名称、来源或备注" clearable @keyup.enter="applyFilters" />
+            <el-input v-model="filters.task_type" placeholder="任务类型，如 segmentation" clearable @keyup.enter="applyFilters" />
+            <el-input v-model="filters.disease" placeholder="病种标签，如 caries" clearable @keyup.enter="applyFilters" />
+            <el-button type="primary" @click="applyFilters">筛选</el-button>
+            <el-button @click="resetFilters">重置</el-button>
+          </div>
+        </details>
+
         <el-skeleton v-if="loading" :rows="6" animated />
-        <el-empty v-else-if="datasets.length === 0" description="暂无数据集登记，可先初始化公开清单" />
+        <div v-else-if="datasets.length === 0" class="empty-action-card">
+          <strong>还没有公开数据集登记</strong>
+          <p>点击“初始化公开清单”写入 DENTEX、OdontoAI、Tufts、Mendeley 等推荐来源。</p>
+          <el-tooltip v-if="!canUpload" content="需要 upload:images 权限" placement="top">
+            <span><el-button type="primary" disabled>初始化公开清单</el-button></span>
+          </el-tooltip>
+          <el-button v-else type="primary" @click="handleSeedPublicDatasets">初始化公开清单</el-button>
+        </div>
         <div v-else class="dataset-card-grid">
           <article v-for="dataset in datasets" :key="dataset.dataset_id" class="dataset-card">
             <div class="panel-header">

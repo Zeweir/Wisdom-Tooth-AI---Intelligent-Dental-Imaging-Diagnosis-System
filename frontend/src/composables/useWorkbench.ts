@@ -88,6 +88,7 @@ export function useWorkbench(): WorkbenchContext {
   const canViewAccessPanel = computed(() => visibleMenus.value.some((item) => item.key === 'access'))
   const canViewAuditLogs = computed(() => visibleMenus.value.some((item) => item.key === 'audit'))
   const hasWorkbenchAccess = computed(() => canUpload.value || canReadImages.value || canReview.value)
+  const canViewSystemPanel = computed(() => canViewAccessPanel.value || canViewAuditLogs.value)
   const configuredRoleClaimNamesText = computed(() => authProfile.value?.configured_role_claim_names.join(', ') || '未配置')
   const roleClaimAlignmentTagType = computed(() => {
     if (authProfile.value?.role_claim_alignment_status === 'aligned') {
@@ -120,11 +121,8 @@ export function useWorkbench(): WorkbenchContext {
       items.push({ key: 'patients', label: '患者档案', caption: '患者列表、病例统计与历史影像', shortLabel: '患者', to: '/patients' })
       items.push({ key: 'datasets', label: '数据集中心', caption: '公开数据集、许可与适用任务', shortLabel: '数据集', to: '/datasets' })
     }
-    if (canViewAccessPanel.value) {
-      items.push({ key: 'access', label: '权限与角色', caption: 'RBAC 与访问画像', shortLabel: '权限', to: '/access' })
-    }
-    if (canViewAuditLogs.value) {
-      items.push({ key: 'audit', label: '审计中心', caption: '关键留痕与事件追踪', shortLabel: '审计', to: '/audit' })
+    if (canViewSystemPanel.value) {
+      items.push({ key: 'system', label: '系统', caption: '权限配置与审计日志', shortLabel: '系统', to: canViewAccessPanel.value ? '/access' : '/audit' })
     }
 
     return items

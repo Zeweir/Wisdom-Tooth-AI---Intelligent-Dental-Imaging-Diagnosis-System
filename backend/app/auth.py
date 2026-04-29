@@ -146,6 +146,16 @@ def infer_roles_from_scopes(scopes: list[str]) -> list[str]:
     return [role.key for role in effective_roles]
 
 
+def expand_scopes_from_roles(scopes: list[str], roles: list[str]) -> list[str]:
+    expanded = list(dict.fromkeys(scopes))
+    role_scope_map = {role.key: role.scopes for role in RBAC_ROLE_DEFINITIONS}
+    for role in roles:
+        for scope in role_scope_map.get(role, ()):
+            if scope not in expanded:
+                expanded.append(scope)
+    return expanded
+
+
 def normalize_string_list(value: Any) -> list[str]:
     if isinstance(value, str):
         items = [item.strip() for item in value.replace(',', ' ').split(' ')]
@@ -253,8 +263,9 @@ def validate_jwt(token: str) -> dict[str, Any]:
 
 def create_auth_info(payload: dict[str, Any]) -> AuthInfo:
     scope_value = payload.get('scope', '')
-    scopes = [item for item in scope_value.split(' ') if item]
+    raw_scopes = [item for item in scope_value.split(' ') if item]
     token_roles, role_claim_keys = extract_token_roles(payload)
+    scopes = expand_scopes_from_roles(raw_scopes, token_roles)
     inferred_roles = infer_roles_from_scopes(scopes)
     effective_roles = token_roles or inferred_roles
     return AuthInfo(

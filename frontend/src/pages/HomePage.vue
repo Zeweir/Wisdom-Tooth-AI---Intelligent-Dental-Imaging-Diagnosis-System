@@ -8,6 +8,7 @@ const authReady = workbench.authReady
 const hasWorkbenchAccess = workbench.hasWorkbenchAccess
 const currentRecord = workbench.currentRecord
 const beginSignOut = workbench.beginSignOut
+const canReadImages = workbench.canReadImages
 </script>
 
 <template>
@@ -16,11 +17,10 @@ const beginSignOut = workbench.beginSignOut
       <div class="overview-copy">
         <div class="overview-pill">口腔影像智能辅助诊断</div>
         <h2>清晰、可信的口腔影像医生工作台</h2>
-        <p>聚焦病例上传、影像判读和报告审核。系统负责整理 AI 结果，医生负责最终确认。</p>
+        <p>登录后按三步完成工作：上传/选择病例，查看 AI 判读，提交医生审核意见。</p>
         <div class="hero-actions">
           <RouterLink to="/workspace" class="el-button el-button--primary"><span>进入影像工作站</span></RouterLink>
-          <RouterLink to="/patients" class="el-button is-plain"><span>查看患者档案</span></RouterLink>
-          <RouterLink to="/datasets" class="el-button is-plain"><span>数据集中心</span></RouterLink>
+          <RouterLink v-if="canReadImages" to="/patients" class="el-button is-plain"><span>患者档案</span></RouterLink>
         </div>
       </div>
       <div class="hero-summary-card">
@@ -42,7 +42,7 @@ const beginSignOut = workbench.beginSignOut
       <el-button @click="beginSignOut">退出当前账号</el-button>
     </UnauthorizedPanel>
 
-    <section class="panel-grid single-panel-grid">
+    <section class="doctor-quick-grid">
       <el-card class="panel" shadow="never">
         <template #header>
           <div class="panel-header">
@@ -61,6 +61,19 @@ const beginSignOut = workbench.beginSignOut
             <el-tag type="success">{{ currentRecord.detections.length }} 个病灶</el-tag>
             <RouterLink to="/workspace" class="el-button el-button--primary is-plain"><span>继续审核</span></RouterLink>
           </div>
+        </div>
+      </el-card>
+
+      <el-card class="panel" shadow="never">
+        <template #header>
+          <div class="panel-header">
+            <span>医生工作流程</span>
+          </div>
+        </template>
+        <div class="simple-step-list">
+          <div><strong>1. 病例</strong><span>上传新影像或从队列选择病例。</span></div>
+          <div><strong>2. 判读</strong><span>查看影像、AI 标注和检测明细。</span></div>
+          <div><strong>3. 报告</strong><span>补充意见，必要时确认为正式报告。</span></div>
         </div>
       </el-card>
     </section>

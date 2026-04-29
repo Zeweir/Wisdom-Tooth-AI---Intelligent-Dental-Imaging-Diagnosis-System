@@ -134,6 +134,8 @@ VITE_LOGTO_API_RESOURCE=https://api.wisdom-tooth-ai.local
 docker compose up --build
 ```
 
+Docker 前端会通过 nginx 代理访问后端 `/api`，不会读取 `frontend/.env.local` 中的 `VITE_API_BASE_URL`。本地 `npm run dev` 才使用 `.env.local` 直连开发后端；如果浏览器请求 `http://127.0.0.1:8000/api/...` 返回了其他项目内容，说明当前不是 Docker 前端代理路径，应改访问 `http://127.0.0.1:5173`。
+
 启动后访问：
 
 - 前端：`http://127.0.0.1:5173`

@@ -10,6 +10,7 @@ const navigationItems = workbench.navigationItems
 const displayName = workbench.displayName
 const displayedRoles = workbench.displayedRoles
 const authScopes = workbench.authScopes
+const authProfile = workbench.authProfile
 const isAuthenticated = workbench.isAuthenticated
 const isLoading = workbench.isLoading
 const authReady = workbench.authReady
@@ -17,8 +18,19 @@ const beginSignIn = workbench.beginSignIn
 const beginSignOut = workbench.beginSignOut
 
 const currentNavKey = computed(() => {
+  if (route.path === '/access' || route.path === '/audit') {
+    return 'system'
+  }
   const current = navigationItems.value.find((item) => item.to === route.path)
   return current?.key ?? 'home'
+})
+
+const permissionSummary = computed(() => {
+  const permissions = authProfile.value?.permissions ?? []
+  if (permissions.length === 0) {
+    return '未检测到 API 权限'
+  }
+  return `权限：${permissions.join(', ')}`
 })
 </script>
 
@@ -68,14 +80,12 @@ const currentNavKey = computed(() => {
           class="surface-alert"
         />
 
-        <el-alert
-          v-else-if="isAuthenticated && authReady"
-          :title="`当前角色：${displayedRoles.map((item) => item.label).join(', ') || '未匹配到预设角色'}；权限数：${authScopes.length}`"
-          type="success"
-          :closable="false"
-          show-icon
-          class="surface-alert"
-        />
+        <details v-else-if="isAuthenticated && authReady" class="debug-permission-panel">
+          <summary>
+            当前角色：{{ displayedRoles.map((item) => item.label).join(', ') || '未匹配到预设角色' }}；权限数：{{ authScopes.length }}
+          </summary>
+          <div>{{ permissionSummary }}</div>
+        </details>
 
         <RouterView />
       </main>

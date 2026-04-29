@@ -134,17 +134,12 @@ onMounted(() => {
       </div>
     </el-form>
 
-    <div class="event-box">
-      <div class="panel-header">
-        <span>实时分析事件</span>
-        <el-tag type="info">{{ socketEvents.length }} 条</el-tag>
-      </div>
-      <el-empty v-if="socketEvents.length === 0" description="上传后这里会显示 WebSocket 事件" />
+    <details class="event-box compact-details">
+      <summary>实时分析事件（{{ socketEvents.length }}）</summary>
+      <el-empty v-if="socketEvents.length === 0" description="上传后显示任务进度" />
       <el-timeline v-else>
-        <el-timeline-item v-for="event in socketEvents" :key="event" :timestamp="'实时'">
-          {{ event }}
-        </el-timeline-item>
+        <el-timeline-item v-for="event in socketEvents" :key="event" :timestamp="'实时'">{{ event }}</el-timeline-item>
       </el-timeline>
-    </div>
+    </details>
   </el-card>
 </template>

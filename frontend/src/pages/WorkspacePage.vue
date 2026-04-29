@@ -37,11 +37,11 @@ const handleFinalizeSubmit = workbench.handleFinalizeSubmit
 
 <template>
   <div class="page-stack">
-    <section class="medical-page-header">
+    <section class="medical-page-header compact-page-header">
       <div>
         <div class="overview-pill">影像工作站</div>
-        <h2>上传影像，审核报告</h2>
-        <p>围绕当前病例完成上传、查看 AI 结果和医生确认。</p>
+        <h2>病例队列 → AI 判读 → 报告审核</h2>
+        <p>按顺序完成当前病例，不需要在多个页面之间来回切换。</p>
       </div>
     </section>
 
@@ -56,13 +56,7 @@ const handleFinalizeSubmit = workbench.handleFinalizeSubmit
     <template v-else>
       <section class="clinical-workbench-grid">
         <div class="workbench-column case-column">
-          <div class="section-heading compact-heading">
-            <div>
-              <h3>病例队列</h3>
-              <p>上传或选择病例。</p>
-            </div>
-            <el-button v-if="canReadImages" text @click="fetchRecords">刷新</el-button>
-          </div>
+          <div class="step-heading"><span>1</span><strong>选择病例</strong><el-button v-if="canReadImages" text @click="fetchRecords">刷新</el-button></div>
           <UploadPanel
             v-if="canUpload"
             v-model:loading="loading"
@@ -98,11 +92,8 @@ const handleFinalizeSubmit = workbench.handleFinalizeSubmit
         </div>
 
         <div class="workbench-column image-column">
-          <div class="section-heading compact-heading">
-            <div>
-              <h3>影像判读</h3>
-              <p>查看影像、病灶和置信度。</p>
-            </div>
+          <div class="step-heading">
+            <span>2</span><strong>查看 AI 判读</strong>
             <div class="section-heading-tags">
               <el-tag v-if="currentRecord" type="info">{{ currentRecord.patient?.name ?? currentRecord.patient_id }}</el-tag>
               <el-tag v-if="currentRecord" type="success">{{ getReportStatusLabel(currentRecord.report.status) }}</el-tag>
@@ -117,12 +108,7 @@ const handleFinalizeSubmit = workbench.handleFinalizeSubmit
         </div>
 
         <div class="workbench-column report-column">
-          <div class="section-heading compact-heading">
-            <div>
-              <h3>报告审核</h3>
-              <p>补充意见并确认报告。</p>
-            </div>
-          </div>
+          <div class="step-heading"><span>3</span><strong>审核报告</strong></div>
           <ReportReviewPanel
             v-if="canReview || canReadImages"
             v-model:review-text="reviewText"

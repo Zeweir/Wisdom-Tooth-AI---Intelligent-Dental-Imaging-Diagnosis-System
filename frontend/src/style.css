@@ -198,6 +198,8 @@ h3 {
 .tag-wrap,
 .patient-search-row,
 .dataset-filter-row,
+.dataset-brief-row,
+.queue-summary,
 .section-heading-tags,
 .quick-action-row,
 .record-meta,
@@ -298,6 +300,10 @@ h3 {
   grid-template-columns: minmax(0, 1fr);
 }
 
+.compact-page-header {
+  padding: 20px 22px;
+}
+
 .overview-pill {
   display: inline-flex;
   align-items: center;
@@ -386,6 +392,12 @@ h3 {
 
 .single-panel-grid {
   grid-template-columns: 1fr;
+}
+
+.doctor-quick-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  gap: 14px;
 }
 
 .case-focus {
@@ -731,6 +743,116 @@ h3 {
   gap: 12px;
 }
 
+.debug-permission-panel,
+.compact-details {
+  border: 1px solid #edf5f7;
+  border-radius: 14px;
+  background: #fbfdfe;
+}
+
+.debug-permission-panel {
+  padding: 10px 12px;
+  color: var(--medical-muted);
+  font-size: 13px;
+}
+
+.debug-permission-panel summary,
+.compact-details summary {
+  cursor: pointer;
+  color: var(--medical-ink);
+  font-weight: 800;
+}
+
+.compact-details {
+  padding: 12px;
+}
+
+.compact-details > *:not(summary) {
+  margin-top: 12px;
+}
+
+.queue-summary,
+.dataset-brief-row {
+  margin-bottom: 12px;
+  color: var(--medical-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.queue-summary span,
+.dataset-brief-row span {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: var(--medical-soft);
+  color: var(--medical-primary-dark);
+}
+
+.step-heading {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 36px;
+}
+
+.step-heading > span {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--medical-primary);
+  font-weight: 800;
+}
+
+.step-heading strong {
+  color: var(--medical-ink);
+  font-size: 18px;
+}
+
+.simple-step-list {
+  display: grid;
+  gap: 12px;
+}
+
+.simple-step-list div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #edf5f7;
+  border-radius: 14px;
+  background: #fbfdfe;
+}
+
+.simple-step-list strong {
+  color: var(--medical-ink);
+}
+
+.simple-step-list span {
+  color: var(--medical-muted);
+}
+
+.empty-action-card {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  padding: 34px 18px;
+  border: 1px dashed var(--medical-border);
+  border-radius: 18px;
+  background: #fbfdfe;
+  text-align: center;
+}
+
+.empty-action-card strong {
+  color: var(--medical-ink);
+}
+
+.empty-action-card p {
+  max-width: 520px;
+  margin: 0;
+  color: var(--medical-muted);
+}
+
 .dataset-filter-row {
   align-items: stretch;
   display: grid;
@@ -888,6 +1010,7 @@ h3 {
   .patient-workspace-grid,
   .dataset-card-grid,
   .dataset-filter-row,
+  .doctor-quick-grid,
   .medical-page-header,
   .medical-hero-card,
   .feature-grid,

@@ -32,46 +32,40 @@ const pendingCount = computed(() => props.records.filter((record) => record.repo
       </div>
     </template>
 
-    <div class="medical-signal-row">
-      <div class="clinical-metric">
-        <div class="metric-value">{{ props.records.length }}</div>
-        <div class="metric-label">当前记录</div>
-      </div>
-      <div class="clinical-metric">
-        <div class="metric-value">{{ pendingCount }}</div>
-        <div class="metric-label">待确认</div>
-      </div>
-      <div class="clinical-metric">
-        <div class="metric-value">{{ finalizedCount }}</div>
-        <div class="metric-label">正式报告</div>
-      </div>
+    <div class="queue-summary">
+      <span>{{ props.records.length }} 条记录</span>
+      <span>{{ pendingCount }} 待确认</span>
+      <span>{{ finalizedCount }} 正式报告</span>
     </div>
 
-    <el-form label-position="top">
-      <el-form-item label="患者">
-        <el-input v-model="props.filters.patient_id" placeholder="按患者编号模糊搜索" clearable />
-      </el-form-item>
-      <el-form-item label="影像类型">
-        <el-select v-model="props.filters.image_type" class="w-full" clearable>
-          <el-option label="全部" value="" />
-          <el-option label="全景片" value="panoramic" />
-          <el-option label="根尖片" value="periapical" />
-          <el-option label="CBCT" value="cbct" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="报告状态">
-        <el-select v-model="props.filters.report_status" class="w-full" clearable>
-          <el-option label="全部" value="" />
-          <el-option label="AI 已生成" value="ai_generated" />
-          <el-option label="医生已审核" value="doctor_reviewed" />
-          <el-option label="已正式确认" value="finalized" />
-        </el-select>
-      </el-form-item>
-      <div class="actions">
-        <el-button type="primary" @click="emit('applyFilters')">应用筛选</el-button>
-        <el-button @click="emit('resetFilters')">重置</el-button>
-      </div>
-    </el-form>
+    <details class="compact-details">
+      <summary>筛选病例</summary>
+      <el-form label-position="top">
+        <el-form-item label="患者">
+          <el-input v-model="props.filters.patient_id" placeholder="按患者编号模糊搜索" clearable />
+        </el-form-item>
+        <el-form-item label="影像类型">
+          <el-select v-model="props.filters.image_type" class="w-full" clearable>
+            <el-option label="全部" value="" />
+            <el-option label="全景片" value="panoramic" />
+            <el-option label="根尖片" value="periapical" />
+            <el-option label="CBCT" value="cbct" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="报告状态">
+          <el-select v-model="props.filters.report_status" class="w-full" clearable>
+            <el-option label="全部" value="" />
+            <el-option label="AI 已生成" value="ai_generated" />
+            <el-option label="医生已审核" value="doctor_reviewed" />
+            <el-option label="已正式确认" value="finalized" />
+          </el-select>
+        </el-form-item>
+        <div class="actions">
+          <el-button type="primary" @click="emit('applyFilters')">应用筛选</el-button>
+          <el-button @click="emit('resetFilters')">重置</el-button>
+        </div>
+      </el-form>
+    </details>
 
     <el-empty v-if="props.records.length === 0" description="暂无记录，请先上传影像" />
     <div v-else class="record-list">
