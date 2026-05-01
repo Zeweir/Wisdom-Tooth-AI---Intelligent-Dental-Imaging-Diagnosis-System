@@ -672,7 +672,13 @@ onMounted(async () => {
       </el-card>
     </template>
 
-    <el-drawer v-model="detailVisible" title="数据集详情" size="520px">
+    <el-drawer
+      v-model="detailVisible"
+      title="数据集详情"
+      size="min(92vw, 520px)"
+      :lock-scroll="false"
+      modal-class="clinical-drawer-overlay"
+    >
       <el-empty v-if="!selectedDataset" description="请选择数据集" />
       <div v-else class="dataset-detail-stack">
         <h3>{{ selectedDataset.name }}</h3>
@@ -700,7 +706,13 @@ onMounted(async () => {
       </div>
     </el-drawer>
 
-    <el-drawer v-model="samplesDrawerVisible" title="样本索引" size="680px">
+    <el-drawer
+      v-model="samplesDrawerVisible"
+      title="样本索引"
+      size="min(94vw, 680px)"
+      :lock-scroll="false"
+      modal-class="clinical-drawer-overlay"
+    >
       <el-empty v-if="!selectedImport" description="请选择导入批次" />
       <template v-else>
         <div class="dataset-brief-row">
@@ -728,7 +740,13 @@ onMounted(async () => {
       </template>
     </el-drawer>
 
-    <el-dialog v-model="dialogVisible" :title="editingDataset ? '编辑数据集登记' : '新增数据集登记'" width="680px">
+    <el-dialog
+      v-model="dialogVisible"
+      :title="editingDataset ? '编辑数据集登记' : '新增数据集登记'"
+      width="min(94vw, 680px)"
+      :lock-scroll="false"
+      modal-class="clinical-dialog-overlay"
+    >
       <el-form label-position="top">
         <el-form-item label="数据集名称">
           <el-input v-model="form.name" placeholder="例如 DENTEX 2023 Challenge" />
@@ -807,7 +825,13 @@ onMounted(async () => {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="importDialogVisible" title="新建数据导入批次" width="620px">
+    <el-dialog
+      v-model="importDialogVisible"
+      title="新建数据导入批次"
+      width="min(94vw, 620px)"
+      :lock-scroll="false"
+      modal-class="clinical-dialog-overlay"
+    >
       <el-form label-position="top">
         <el-form-item label="导入方式">
           <el-select v-model="importForm.import_method" class="w-full">
@@ -857,7 +881,13 @@ onMounted(async () => {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="evaluationDialogVisible" title="新增模型评估记录" width="620px">
+    <el-dialog
+      v-model="evaluationDialogVisible"
+      title="新增模型评估记录"
+      width="min(94vw, 620px)"
+      :lock-scroll="false"
+      modal-class="clinical-dialog-overlay"
+    >
       <el-form label-position="top">
         <div class="dialog-form-grid">
           <el-form-item label="模型名称">

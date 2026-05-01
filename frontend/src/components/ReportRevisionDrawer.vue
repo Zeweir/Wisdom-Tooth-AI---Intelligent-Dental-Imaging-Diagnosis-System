@@ -52,7 +52,13 @@ watch(
 </script>
 
 <template>
-  <el-drawer v-model="visible" title="报告版本历史" size="620px">
+  <el-drawer
+    v-model="visible"
+    title="报告版本历史"
+    size="min(94vw, 620px)"
+    :lock-scroll="false"
+    modal-class="clinical-drawer-overlay"
+  >
     <el-skeleton v-if="loading" :rows="5" animated />
     <el-empty v-else-if="revisions.length === 0" description="暂无报告版本记录，保存审核意见后会自动生成" />
     <div v-else class="revision-list">

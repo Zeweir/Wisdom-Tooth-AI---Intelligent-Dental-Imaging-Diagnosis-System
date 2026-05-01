@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { fetchProtectedBlobUrl } from '../api/http'
 import type { AnalysisItem } from '../types/analysis'
@@ -10,6 +10,9 @@ const props = defineProps<{
 }>()
 
 const previewUrl = ref('')
+const previewShellRef = ref<HTMLElement | null>(null)
+const imageNaturalSize = ref({ width: 0, height: 0 })
+const imageDisplayRect = ref({ left: 0, top: 0, width: 0, height: 0 })
 const currentStatusLabel = computed(() => (props.currentRecord ? getReportStatusLabel(props.currentRecord.report.status) : ''))
 const currentImageTypeLabel = computed(() => (props.currentRecord ? getImageTypeLabel(props.currentRecord.image_type) : ''))
 const averageConfidence = computed(() => {
@@ -22,18 +25,26 @@ const averageConfidence = computed(() => {
 const highConfidenceCount = computed(() => (props.currentRecord?.detections ?? []).filter((item) => item.confidence >= 0.85).length)
 const detectionOverlayBoxes = computed(() => {
   const detections = props.currentRecord?.detections ?? []
-  const maxX = Math.max(...detections.flatMap((item) => [item.bbox[0] ?? 0, item.bbox[2] ?? 0]), 1)
-  const maxY = Math.max(...detections.flatMap((item) => [item.bbox[1] ?? 0, item.bbox[3] ?? 0]), 1)
+  const naturalWidth = imageNaturalSize.value.width
+  const naturalHeight = imageNaturalSize.value.height
+  const display = imageDisplayRect.value
+  if (!naturalWidth || !naturalHeight || !display.width || !display.height) {
+    return []
+  }
   return detections.map((item, index) => {
     const [x1 = 0, y1 = 0, x2 = 0, y2 = 0] = item.bbox
+    const left = display.left + (x1 / naturalWidth) * display.width
+    const top = display.top + (y1 / naturalHeight) * display.height
+    const width = ((x2 - x1) / naturalWidth) * display.width
+    const height = ((y2 - y1) / naturalHeight) * display.height
     return {
       key: `${item.tooth_id}-${item.class}-${index}`,
       label: `${item.tooth_id} ${item.class} ${Math.round(item.confidence * 100)}%`,
       style: {
-        left: `${Math.max(0, Math.min(100, (x1 / maxX) * 100))}%`,
-        top: `${Math.max(0, Math.min(100, (y1 / maxY) * 100))}%`,
-        width: `${Math.max(8, Math.min(100, ((x2 - x1) / maxX) * 100))}%`,
-        height: `${Math.max(8, Math.min(100, ((y2 - y1) / maxY) * 100))}%`,
+        left: `${Math.max(0, left)}px`,
+        top: `${Math.max(0, top)}px`,
+        width: `${Math.max(10, width)}px`,
+        height: `${Math.max(10, height)}px`,
       }
     }
   })
@@ -52,6 +63,42 @@ function resetPreviewUrl() {
     URL.revokeObjectURL(previewUrl.value)
   }
   previewUrl.value = ''
+  imageNaturalSize.value = { width: 0, height: 0 }
+  imageDisplayRect.value = { left: 0, top: 0, width: 0, height: 0 }
+}
+
+function updateImageDisplayRect() {
+  const shell = previewShellRef.value
+  if (!shell || !imageNaturalSize.value.width || !imageNaturalSize.value.height) {
+    return
+  }
+  const { clientWidth, clientHeight } = shell
+  const naturalRatio = imageNaturalSize.value.width / imageNaturalSize.value.height
+  const shellRatio = clientWidth / clientHeight
+  let width = clientWidth
+  let height = clientHeight
+  let left = 0
+  let top = 0
+  if (shellRatio > naturalRatio) {
+    width = clientHeight * naturalRatio
+    left = (clientWidth - width) / 2
+  } else {
+    height = clientWidth / naturalRatio
+    top = (clientHeight - height) / 2
+  }
+  imageDisplayRect.value = { left, top, width, height }
+}
+
+function handlePreviewLoad(event: Event) {
+  const image = event.target as HTMLImageElement | null
+  if (!image?.naturalWidth || !image.naturalHeight) {
+    return
+  }
+  imageNaturalSize.value = {
+    width: image.naturalWidth,
+    height: image.naturalHeight,
+  }
+  updateImageDisplayRect()
 }
 
 watch(
@@ -63,6 +110,8 @@ watch(
     }
     try {
       previewUrl.value = await fetchProtectedBlobUrl(imageUrl)
+      await nextTick()
+      updateImageDisplayRect()
     } catch {
       previewUrl.value = ''
     }
@@ -70,7 +119,12 @@ watch(
   { immediate: true }
 )
 
+onMounted(() => {
+  window.addEventListener('resize', updateImageDisplayRect)
+})
+
 onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateImageDisplayRect)
   resetPreviewUrl()
 })
 </script>
@@ -97,17 +151,15 @@ onBeforeUnmount(() => {
 
       <div class="report-box">
         <div class="sub-title">影像预览</div>
-        <div class="image-preview-shell">
-          <el-image
+        <div ref="previewShellRef" class="image-preview-shell">
+          <img
+            v-if="previewUrl"
             :src="previewUrl"
-            fit="contain"
             class="image-preview"
-            :preview-src-list="previewUrl ? [previewUrl] : []"
-          >
-            <template #error>
-              <el-empty description="当前文件暂不支持浏览器预览，可通过接口直接下载查看" />
-            </template>
-          </el-image>
+            alt="牙科影像预览"
+            @load="handlePreviewLoad"
+          />
+          <el-empty v-else description="当前文件暂不支持浏览器预览，可通过接口直接下载查看" />
           <div v-if="previewUrl && detectionOverlayBoxes.length > 0" class="bbox-layer" aria-label="AI 检测框叠加层">
             <div v-for="box in detectionOverlayBoxes" :key="box.key" class="bbox-box" :style="box.style">
               <span>{{ box.label }}</span>

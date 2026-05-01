@@ -339,7 +339,13 @@ onMounted(async () => {
       </div>
     </section>
 
-    <el-dialog v-model="dialogVisible" :title="editingPatient ? '编辑患者档案' : '新建患者档案'" width="520px">
+    <el-dialog
+      v-model="dialogVisible"
+      :title="editingPatient ? '编辑患者档案' : '新建患者档案'"
+      width="min(92vw, 520px)"
+      :lock-scroll="false"
+      modal-class="clinical-dialog-overlay"
+    >
       <el-form label-position="top">
         <el-form-item label="患者编号">
           <el-input v-model="form.patient_id" :disabled="Boolean(editingPatient)" placeholder="例如 P-0001" />
@@ -372,7 +378,13 @@ onMounted(async () => {
       </template>
     </el-dialog>
 
-    <el-drawer v-model="reportDrawerVisible" title="报告预览" size="560px">
+    <el-drawer
+      v-model="reportDrawerVisible"
+      title="报告预览"
+      size="min(92vw, 560px)"
+      :lock-scroll="false"
+      modal-class="clinical-drawer-overlay"
+    >
       <el-empty v-if="!previewReport" description="请选择一条病例" />
       <div v-else class="report-preview-stack">
         <div class="panel-header">
