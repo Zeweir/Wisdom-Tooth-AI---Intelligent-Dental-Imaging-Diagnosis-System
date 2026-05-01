@@ -17,6 +17,7 @@ env/
 # Backend runtime files
 backend/uploads/
 backend/.env
+datasets/
 models/
 *.pt
 *.onnx
@@ -33,6 +34,7 @@ frontend/.env.*.local
 .env
 .env.local
 .env.*.local
+kaggle.json
 
 # Logs
 *.log

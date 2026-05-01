@@ -108,6 +108,8 @@ def create_dataset_import(db: Session, *, dataset_id: str, payload: DatasetImpor
     db.flush()
     if payload.import_method == 'manual_summary' and payload.sample_count > 0:
         create_placeholder_samples(db, item, payload.sample_count)
+    if payload.import_method == 'local_directory' and payload.source_path:
+        index_local_directory(db, item=item, source_path=payload.source_path)
     return item
 
 
@@ -190,6 +192,44 @@ def create_placeholder_samples(db: Session, item: DatasetImportRecord, sample_co
                 label_summary={'source': 'manual_summary'},
             )
         )
+
+
+def index_local_directory(db: Session, *, item: DatasetImportRecord, source_path: str) -> int:
+    dataset_path = Path(source_path).expanduser()
+    if not dataset_path.exists() or not dataset_path.is_dir():
+        raise HTTPException(status_code=400, detail=f'本地数据集目录不存在或不可访问：{source_path}')
+
+    indexed = 0
+    for path in dataset_path.rglob('*'):
+        if indexed >= MAX_INDEXED_FILES:
+            break
+        if not path.is_file() or path.name.startswith('.'):
+            continue
+        file_type = infer_file_type(path.name)
+        if file_type == 'other':
+            continue
+        try:
+            filename = path.relative_to(dataset_path).as_posix()
+        except ValueError:
+            filename = path.name
+        db.add(
+            DatasetSampleRecord(
+                import_id=item.import_id,
+                dataset_id=item.dataset_id,
+                filename=filename,
+                file_type=file_type,
+                image_type=item.image_type,
+                annotation_status='available' if file_type == 'annotation' else 'unknown',
+                label_summary={'source': 'local_directory', 'root': str(dataset_path)},
+            )
+        )
+        indexed += 1
+
+    item.sample_count = indexed
+    item.status = 'indexed' if indexed > 0 else 'empty'
+    item.error_message = None if indexed > 0 else '目录中未发现可索引的影像或标注文件'
+    item.updated_at = now_utc()
+    return indexed
 
 
 def index_zip_upload(

@@ -87,6 +87,22 @@ YOLO_CLASS_MAP_JSON=
 
 `YOLO_MODEL_PATH` 为空或文件不存在时，系统会自动跳过 YOLO，继续使用 Ollama / mock 分析。Docker Compose 默认把 `./models` 挂载到容器 `/models`，可将权重放到 `models/dental-yolo.pt`。
 
+如需从 Kaggle 下载公开牙科数据集，先配置本机环境变量，下载脚本会优先读取 `KAGGLE_USERNAME` / `KAGGLE_KEY`，Windows 下也会 fallback 到用户环境变量注册表：
+
+```powershell
+setx KAGGLE_USERNAME "your-kaggle-username"
+setx KAGGLE_KEY "your-kaggle-api-key"
+python scripts/download_dataset.py --extract --extract-dir datasets/x
+```
+
+也可以下载指定 Kaggle slug：
+
+```powershell
+python scripts/download_dataset.py --kaggle ermecan/dental-x-ray-dataset --filename dental-x-ray-dataset.zip --extract --extract-dir datasets/dental_xray
+```
+
+Docker Compose 会把本机 `./datasets` 只读挂载到后端和 Worker 容器的 `/datasets`。在“数据集中心”新建导入时选择“本地目录登记”，可填写例如 `/datasets/x`、`/datasets/dental_xray`、`/datasets/panoramic_disease`，后端会扫描目录并生成样本索引。
+
 ### 2. 启动后端
 
 ```bash

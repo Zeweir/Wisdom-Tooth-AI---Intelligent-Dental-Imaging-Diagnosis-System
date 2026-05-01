@@ -102,6 +102,7 @@ services:
       - "8000:8000"
     volumes:
       - ./models:/models:ro
+      - ./datasets:/datasets:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -146,6 +147,7 @@ services:
       YOLO_CLASS_MAP_JSON: ""
     volumes:
       - ./models:/models:ro
+      - ./datasets:/datasets:ro
     depends_on:
       postgres:
         condition: service_healthy

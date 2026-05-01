@@ -820,7 +820,7 @@ onMounted(async () => {
         <el-form-item v-if="importForm.import_method !== 'manual_summary'" label="来源路径 / 说明">
           <el-input
             v-model="importForm.source_path"
-            :placeholder="importForm.import_method === 'url_download' ? 'https://example.com/dataset.zip' : '例如 D:\\datasets\\dentex 或样本包来源说明'"
+            :placeholder="importForm.import_method === 'url_download' ? 'https://example.com/dataset.zip' : 'Docker 中建议填写 /datasets/x 或 /datasets/dental_xray'"
           />
           <div v-if="importForm.import_method === 'url_download'" class="dataset-tab-note">
             请输入可匿名直接下载的 zip 文件地址；Kaggle 页面地址通常不是 zip 直链。
