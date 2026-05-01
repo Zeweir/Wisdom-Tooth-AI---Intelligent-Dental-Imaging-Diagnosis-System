@@ -357,18 +357,19 @@ async function submitImport() {
   if (!selectedDataset.value) {
     return
   }
+  if (importForm.import_method === 'zip_upload' && !zipFile.value) {
+    ElMessage.warning('请先选择 zip 样本包')
+    return
+  }
+  const selectedZipFile = zipFile.value
   const created = await createDatasetImport(selectedDataset.value.dataset_id, {
     ...importForm,
     source_path: importForm.source_path || null,
     annotation_format: importForm.annotation_format || null,
     notes: importForm.notes || null,
   })
-  if (importForm.import_method === 'zip_upload') {
-    if (!zipFile.value) {
-      ElMessage.warning('请先选择 zip 样本包')
-      return
-    }
-    await uploadDatasetZip(created.import_id, zipFile.value)
+  if (importForm.import_method === 'zip_upload' && selectedZipFile) {
+    await uploadDatasetZip(created.import_id, selectedZipFile)
   }
   ElMessage.success('导入批次已创建')
   importDialogVisible.value = false
