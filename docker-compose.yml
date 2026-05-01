@@ -69,6 +69,7 @@ services:
         condition: service_healthy
 
   backend:
+    image: wisdom-tooth-ai-backend:local
     build:
       context: ./backend
     container_name: wisdom-tooth-ai-backend
@@ -114,8 +115,7 @@ services:
         condition: service_started
 
   celery-worker:
-    build:
-      context: ./backend
+    image: wisdom-tooth-ai-backend:local
     container_name: wisdom-tooth-ai-celery-worker
     command:
       ["celery", "-A", "app.celery_app.celery_app", "worker", "--loglevel=info"]

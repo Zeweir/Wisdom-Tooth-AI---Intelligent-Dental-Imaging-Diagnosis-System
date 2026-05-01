@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-slim-bookworm
 
 WORKDIR /app
 
@@ -6,8 +6,17 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 RUN printf 'Acquire::Retries "5";\nAcquire::http::Timeout "60";\nAcquire::https::Timeout "60";\n' > /etc/apt/apt.conf.d/80-retries
-RUN apt-get update \
-    && apt-get install -y --fix-missing --no-install-recommends libgl1 libglib2.0-0 \
+RUN for attempt in 1 2 3 4 5; do \
+        apt-get update \
+        && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 \
+        && break; \
+        apt-get clean; \
+        rm -rf /var/lib/apt/lists/*; \
+        echo "apt install failed, retrying (${attempt}/5)"; \
+        sleep 5; \
+    done \
+    && dpkg --configure -a \
+    && apt-get install -f -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./requirements.txt
