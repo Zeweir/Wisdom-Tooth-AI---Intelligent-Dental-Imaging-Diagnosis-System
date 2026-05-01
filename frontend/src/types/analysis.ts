@@ -59,6 +59,20 @@ export interface ReportReviewPayload {
   status: Extract<ReportStatus, "doctor_reviewed" | "finalized">;
 }
 
+export interface ReportRevision {
+  revision_id: string;
+  report_id: string;
+  image_id: string;
+  version_no: number;
+  status: ReportStatus;
+  content: string;
+  doctor_review: string | null;
+  detections: Detection[];
+  actor_sub: string;
+  actor_roles: string[];
+  created_at: string;
+}
+
 export interface DashboardSummary {
   total_images: number;
   total_patients: number;
@@ -79,5 +93,10 @@ export interface DashboardSummary {
 
 export interface PaginatedAnalysisResult {
   items: AnalysisItem[];
+  meta: PaginationMeta;
+}
+
+export interface PaginatedReportRevisionsResult {
+  items: ReportRevision[];
   meta: PaginationMeta;
 }

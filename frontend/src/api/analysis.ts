@@ -4,6 +4,7 @@ import type {
   AnalysisItem,
   DashboardSummary,
   Detection,
+  PaginatedReportRevisionsResult,
   PaginatedAnalysisResult,
   ReportReviewPayload,
 } from "../types/analysis";
@@ -86,6 +87,27 @@ export async function reviewReport(
     };
   }>(`/api/v1/reports/${reportId}/review`, payload);
   return response.data.data;
+}
+
+export async function listReportRevisions(
+  reportId: string,
+  pagination?: { limit?: number; offset?: number },
+): Promise<PaginatedReportRevisionsResult> {
+  const response = await http.get<{
+    code: number;
+    data: PaginatedReportRevisionsResult["items"];
+    meta?: { limit: number; offset: number; total: number };
+  }>(`/api/v1/reports/${reportId}/revisions`, {
+    params: pagination,
+  });
+  return {
+    items: response.data.data,
+    meta: response.data.meta ?? {
+      limit: pagination?.limit ?? response.data.data.length,
+      offset: pagination?.offset ?? 0,
+      total: response.data.data.length,
+    },
+  };
 }
 
 export function createAnalysisSocket(imageId: string, accessToken: string) {

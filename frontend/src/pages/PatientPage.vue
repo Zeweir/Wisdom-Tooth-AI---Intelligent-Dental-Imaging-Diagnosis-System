@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 
 import { createPatient, listPatientImages, listPatients, updatePatient } from '../api/patients'
+import ReportRevisionDrawer from '../components/ReportRevisionDrawer.vue'
 import UnauthorizedPanel from '../components/UnauthorizedPanel.vue'
 import type { AnalysisItem, PaginationMeta } from '../types/analysis'
 import type { PatientFormPayload, PatientRecord } from '../types/patient'
@@ -24,6 +25,7 @@ const imagesLoading = ref(false)
 const keyword = ref('')
 const dialogVisible = ref(false)
 const reportDrawerVisible = ref(false)
+const revisionDrawerVisible = ref(false)
 const editingPatient = ref<PatientRecord | null>(null)
 const previewReport = ref<AnalysisItem | null>(null)
 const pagination = ref<PaginationMeta>({ limit: 10, offset: 0, total: 0 })
@@ -402,6 +404,7 @@ onMounted(async () => {
           <p class="clinical-copy">{{ previewReport.report.doctor_review || '暂无医生审核意见' }}</p>
         </article>
         <div class="quick-action-row">
+          <el-button @click="revisionDrawerVisible = true">查看版本历史</el-button>
           <RouterLink
             :to="{ path: '/workspace', query: { image_id: previewReport.image_id } }"
             class="el-button el-button--primary"
@@ -411,5 +414,10 @@ onMounted(async () => {
         </div>
       </div>
     </el-drawer>
+
+    <ReportRevisionDrawer
+      v-model:visible="revisionDrawerVisible"
+      :report-id="previewReport?.report.report_id ?? null"
+    />
   </div>
 </template>

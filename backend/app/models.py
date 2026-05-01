@@ -155,6 +155,22 @@ class ReportRecord(Base):
     image: Mapped[ImageRecord] = relationship(back_populates='report')
 
 
+class ReportRevisionRecord(Base):
+    __tablename__ = 'report_revision_records'
+
+    revision_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    report_id: Mapped[str] = mapped_column(String(36), ForeignKey('report_records.report_id'), index=True)
+    image_id: Mapped[str] = mapped_column(String(36), ForeignKey('image_records.image_id'), index=True)
+    version_no: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(30))
+    content: Mapped[str] = mapped_column(Text)
+    doctor_review: Mapped[str | None] = mapped_column(Text, nullable=True)
+    detections: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    actor_sub: Mapped[str] = mapped_column(String(255), index=True)
+    actor_roles: Mapped[list[str]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+
+
 class AuditLogRecord(Base):
     __tablename__ = 'audit_log_records'
 

@@ -100,6 +100,45 @@ const zipFile = ref<File | null>(null)
 
 const totalDiseaseTags = computed(() => new Set(datasets.value.flatMap((item) => item.disease_tags)).size)
 const openDatasetCount = computed(() => datasets.value.filter((item) => ['open', 'open_reference', 'open_registration'].includes(item.access_status)).length)
+const highPriorityDatasetCount = computed(() => datasets.value.filter((item) => item.priority === 'high').length)
+const featuredDataset = computed(() => {
+  return datasets.value.find((item) => /child|pediatric|yolo|儿童|caries/i.test(`${item.name} ${item.notes ?? ''}`))
+    ?? selectedDataset.value
+    ?? datasets.value[0]
+    ?? null
+})
+const selectedDatasetMetrics = computed(() => [
+  {
+    label: '导入批次',
+    value: imports.value.length,
+  },
+  {
+    label: '当前样本',
+    value: imports.value.reduce((sum, item) => sum + item.sample_count, 0),
+  },
+  {
+    label: '评估记录',
+    value: evaluations.value.length,
+  },
+])
+const datasetPipelineSteps = [
+  {
+    title: '登记公开来源',
+    description: '记录 Kaggle、GitHub、论文或医疗影像设备来源，明确许可与任务适配范围。',
+  },
+  {
+    title: '导入样本索引',
+    description: '登记本地目录、上传 zip 或录入手动统计，系统索引影像与 YOLO/COCO 等标注文件。',
+  },
+  {
+    title: '划分训练集合',
+    description: '按 70/15/15 生成 train、val、test 标记，为 YOLOv8-C2f-CBAM 等模型实验准备数据。',
+  },
+  {
+    title: '记录模型评估',
+    description: '沉淀 Precision、Recall、mAP、F1 与样本数量，便于医生侧解释模型能力边界。',
+  },
+]
 
 function resetForm() {
   form.name = ''
@@ -406,9 +445,9 @@ onMounted(async () => {
   <div class="page-stack">
     <section class="medical-page-header compact-page-header dataset-intro">
       <div>
-        <div class="overview-pill">研发数据准备</div>
-        <h2>登记公开数据，逐步形成训练底座。</h2>
-        <p>普通医生不需要处理这里的内容；研发或管理员可在此维护来源、导入样本和记录模型评估。</p>
+        <div class="overview-pill">数据集中心</div>
+        <h2>把公开牙科影像变成可训练的数据底座。</h2>
+        <p>围绕儿童牙科全景片、YOLO 标注、样本索引、训练集划分和模型评估，保持数据准备流程可追踪。</p>
       </div>
     </section>
 
@@ -421,82 +460,144 @@ onMounted(async () => {
     </UnauthorizedPanel>
 
     <template v-else>
-      <el-card class="panel" shadow="never">
-        <template #header>
-          <div class="panel-header">
-            <span>推荐数据来源</span>
-            <div class="quick-action-row">
-              <el-tooltip v-if="!canUpload" content="需要 upload:images 权限" placement="top">
-                <span><el-button type="primary" disabled>初始化公开清单</el-button></span>
-              </el-tooltip>
-              <el-button v-else type="primary" @click="handleSeedPublicDatasets">初始化公开清单</el-button>
-              <el-button v-if="canUpload" plain @click="openCreateDialog">新增登记</el-button>
+      <section class="dataset-dashboard-grid">
+        <div class="dataset-kpi-grid">
+          <div class="dataset-kpi-card">
+            <strong>{{ pagination.total }}</strong>
+            <span>已登记数据集</span>
+          </div>
+          <div class="dataset-kpi-card">
+            <strong>{{ openDatasetCount }}</strong>
+            <span>可访问公开来源</span>
+          </div>
+          <div class="dataset-kpi-card">
+            <strong>{{ totalDiseaseTags }}</strong>
+            <span>病种/标签覆盖</span>
+          </div>
+          <div class="dataset-kpi-card">
+            <strong>{{ highPriorityDatasetCount }}</strong>
+            <span>高优先级训练来源</span>
+          </div>
+        </div>
+
+        <article class="dataset-focus-panel">
+          <div class="overview-pill">参考重点</div>
+          <h3>{{ featuredDataset?.name ?? '儿童牙科全景片数据集' }}</h3>
+          <p>
+            以儿童牙科全景 X 光数据、YOLO 标注和 14 类标签为重点参考，服务龋齿检测、儿童口腔疾病识别和 YOLOv8-C2f-CBAM 实验评估。
+          </p>
+          <div class="dataset-focus-metrics">
+            <div>
+              <strong>1164</strong>
+              <span>全景片参考规模</span>
+            </div>
+            <div>
+              <strong>YOLO</strong>
+              <span>标注格式</span>
+            </div>
+            <div>
+              <strong>14 类</strong>
+              <span>病灶/牙体标签</span>
             </div>
           </div>
-        </template>
+        </article>
+      </section>
 
-        <div class="dataset-brief-row dataset-status-row">
-          <span>{{ pagination.total }} 个数据集</span>
-          <span>{{ openDatasetCount }} 个可访问来源</span>
-          <span>{{ totalDiseaseTags }} 类标签</span>
-        </div>
-
-        <details class="compact-details">
-          <summary>搜索和筛选</summary>
-          <div class="dataset-filter-row">
-            <el-input v-model="filters.keyword" placeholder="搜索名称、来源或备注" clearable @keyup.enter="applyFilters" />
-            <el-input v-model="filters.task_type" placeholder="任务类型，如 segmentation" clearable @keyup.enter="applyFilters" />
-            <el-input v-model="filters.disease" placeholder="病种标签，如 caries" clearable @keyup.enter="applyFilters" />
-            <el-button type="primary" @click="applyFilters">筛选</el-button>
-            <el-button @click="resetFilters">重置</el-button>
-          </div>
-        </details>
-
-        <el-skeleton v-if="loading" :rows="6" animated />
-        <div v-else-if="datasets.length === 0" class="empty-action-card">
-          <strong>还没有公开数据集登记</strong>
-          <p>点击“初始化公开清单”写入 DENTEX、OdontoAI、Tufts、Mendeley 等推荐来源。</p>
-          <el-tooltip v-if="!canUpload" content="需要 upload:images 权限" placement="top">
-            <span><el-button type="primary" disabled>初始化公开清单</el-button></span>
-          </el-tooltip>
-          <el-button v-else type="primary" @click="handleSeedPublicDatasets">初始化公开清单</el-button>
-        </div>
-        <div v-else class="dataset-card-grid">
-          <article v-for="dataset in datasets" :key="dataset.dataset_id" class="dataset-card">
+      <section class="dataset-ops-grid">
+        <el-card class="panel" shadow="never">
+          <template #header>
             <div class="panel-header">
-              <strong>{{ dataset.name }}</strong>
-              <el-tag :type="getPriorityTagType(dataset.priority)">{{ dataset.priority }}</el-tag>
+              <span>公开数据来源</span>
+              <div class="quick-action-row">
+                <el-tooltip v-if="!canUpload" content="需要 upload:images 权限" placement="top">
+                  <span><el-button type="primary" disabled>初始化公开清单</el-button></span>
+                </el-tooltip>
+                <el-button v-else type="primary" @click="handleSeedPublicDatasets">初始化公开清单</el-button>
+                <el-button v-if="canUpload" plain @click="openCreateDialog">新增登记</el-button>
+              </div>
             </div>
-            <p>{{ dataset.notes || '暂无备注' }}</p>
-            <div class="record-meta dataset-primary-meta">
-              <el-tag>{{ dataset.image_type }}</el-tag>
-              <el-tag type="success">{{ getAccessStatusLabel(dataset.access_status) }}</el-tag>
-              <el-tag v-if="dataset.license" type="info">{{ dataset.license }}</el-tag>
-            </div>
-            <div class="dataset-tag-list compact-tag-list">
-              <el-tag v-for="task in dataset.task_types" :key="`${dataset.dataset_id}-${task}`" size="small">{{ task }}</el-tag>
-              <el-tag v-for="disease in dataset.disease_tags" :key="`${dataset.dataset_id}-${disease}`" size="small" type="warning">{{ disease }}</el-tag>
-            </div>
-            <div class="quick-action-row">
-              <el-button type="primary" @click="selectDataset(dataset)">选择</el-button>
-              <el-button type="primary" plain @click="openDetail(dataset)">详情</el-button>
-              <el-button v-if="canUpload" text @click="openEditDialog(dataset)">编辑</el-button>
-              <a :href="dataset.homepage_url" target="_blank" rel="noreferrer" class="el-button is-text">访问来源</a>
-            </div>
-          </article>
-        </div>
+          </template>
 
-        <div class="pagination-row">
-          <el-pagination
-            background
-            layout="total, prev, pager, next"
-            :current-page="Math.floor(pagination.offset / pagination.limit) + 1"
-            :page-size="pagination.limit"
-            :total="pagination.total"
-            @current-change="handlePageChange"
-          />
-        </div>
-      </el-card>
+          <details class="compact-details">
+            <summary>搜索和筛选</summary>
+            <div class="dataset-filter-row">
+              <el-input v-model="filters.keyword" placeholder="搜索名称、来源或备注" clearable @keyup.enter="applyFilters" />
+              <el-input v-model="filters.task_type" placeholder="任务类型，如 segmentation" clearable @keyup.enter="applyFilters" />
+              <el-input v-model="filters.disease" placeholder="病种标签，如 caries" clearable @keyup.enter="applyFilters" />
+              <el-button type="primary" @click="applyFilters">筛选</el-button>
+              <el-button @click="resetFilters">重置</el-button>
+            </div>
+          </details>
+
+          <el-skeleton v-if="loading" :rows="6" animated />
+          <div v-else-if="datasets.length === 0" class="empty-action-card">
+            <strong>还没有公开数据集登记</strong>
+            <p>点击“初始化公开清单”写入儿童牙科全景片、DENTEX、OdontoAI、Tufts、Mendeley 等推荐来源。</p>
+            <el-tooltip v-if="!canUpload" content="需要 upload:images 权限" placement="top">
+              <span><el-button type="primary" disabled>初始化公开清单</el-button></span>
+            </el-tooltip>
+            <el-button v-else type="primary" @click="handleSeedPublicDatasets">初始化公开清单</el-button>
+          </div>
+          <div v-else class="dataset-card-grid">
+            <article
+              v-for="dataset in datasets"
+              :key="dataset.dataset_id"
+              class="dataset-card"
+              :class="{ active: selectedDataset?.dataset_id === dataset.dataset_id }"
+            >
+              <div class="panel-header">
+                <strong>{{ dataset.name }}</strong>
+                <el-tag :type="getPriorityTagType(dataset.priority)">{{ dataset.priority }}</el-tag>
+              </div>
+              <p>{{ dataset.notes || '暂无备注' }}</p>
+              <div class="record-meta dataset-primary-meta">
+                <el-tag>{{ dataset.image_type }}</el-tag>
+                <el-tag type="success">{{ getAccessStatusLabel(dataset.access_status) }}</el-tag>
+                <el-tag v-if="dataset.license" type="info">{{ dataset.license }}</el-tag>
+              </div>
+              <div class="dataset-tag-list compact-tag-list">
+                <el-tag v-for="task in dataset.task_types" :key="`${dataset.dataset_id}-${task}`" size="small">{{ task }}</el-tag>
+                <el-tag v-for="disease in dataset.disease_tags" :key="`${dataset.dataset_id}-${disease}`" size="small" type="warning">{{ disease }}</el-tag>
+              </div>
+              <div class="quick-action-row">
+                <el-button type="primary" @click="selectDataset(dataset)">选择</el-button>
+                <el-button type="primary" plain @click="openDetail(dataset)">详情</el-button>
+                <el-button v-if="canUpload" text @click="openEditDialog(dataset)">编辑</el-button>
+                <a :href="dataset.homepage_url" target="_blank" rel="noreferrer" class="el-button is-text">访问来源</a>
+              </div>
+            </article>
+          </div>
+
+          <div class="pagination-row">
+            <el-pagination
+              background
+              layout="total, prev, pager, next"
+              :current-page="Math.floor(pagination.offset / pagination.limit) + 1"
+              :page-size="pagination.limit"
+              :total="pagination.total"
+              @current-change="handlePageChange"
+            />
+          </div>
+        </el-card>
+
+        <el-card class="panel" shadow="never">
+          <template #header>
+            <div class="panel-header">
+              <span>数据准备闭环</span>
+              <el-tag type="success">功能流程</el-tag>
+            </div>
+          </template>
+          <div class="dataset-pipeline">
+            <div v-for="(step, index) in datasetPipelineSteps" :key="step.title" class="dataset-pipeline-step">
+              <span>{{ index + 1 }}</span>
+              <div>
+                <strong>{{ step.title }}</strong>
+                <small>{{ step.description }}</small>
+              </div>
+            </div>
+          </div>
+        </el-card>
+      </section>
 
       <el-card v-if="selectedDataset" class="panel dataset-workbench-panel" shadow="never">
         <template #header>
@@ -508,6 +609,12 @@ onMounted(async () => {
             </div>
           </div>
         </template>
+
+        <div class="dataset-brief-row dataset-status-row">
+          <span v-for="item in selectedDatasetMetrics" :key="item.label">{{ item.label }} {{ item.value }}</span>
+          <span>{{ selectedDataset.annotation_format || '标注格式未填' }}</span>
+          <span>{{ getAccessStatusLabel(selectedDataset.access_status) }}</span>
+        </div>
 
         <el-tabs v-model="activeDatasetTab" class="dataset-tabs">
           <el-tab-pane label="导入批次" name="imports">
@@ -546,7 +653,6 @@ onMounted(async () => {
           </el-tab-pane>
         </el-tabs>
       </el-card>
-
     </template>
 
     <el-drawer v-model="detailVisible" title="数据集详情" size="520px">

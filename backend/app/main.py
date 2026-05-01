@@ -34,6 +34,7 @@ from app.patients import (
     serialize_patient_summary,
     update_patient,
 )
+from app.report_revisions import create_report_revision, ensure_initial_report_revision, list_report_revisions
 from app.schemas import (
     AnalysisListResponse,
     AnalysisResponse,
@@ -60,6 +61,7 @@ from app.schemas import (
     PatientUpdateRequest,
     ReportReviewRequest,
     ReportReviewResponse,
+    ReportRevisionListResponse,
     ReportStatus,
     UploadApiResponse,
 )
@@ -622,6 +624,21 @@ def get_image_file(image_id: str, _: AuthInfo = Depends(require_api_auth('read:i
     return Response(content=stored.content, media_type=stored.media_type)
 
 
+@app.get("/api/v1/reports/{report_id}/revisions", response_model=ReportRevisionListResponse)
+def get_report_revisions(
+    report_id: str,
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _: AuthInfo = Depends(require_api_auth('read:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    report = db.get(ReportRecord, report_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail="未找到对应报告")
+    items, total = list_report_revisions(db, report_id=report_id, limit=limit, offset=offset)
+    return {"code": 200, "data": items, "meta": {"limit": limit, "offset": offset, "total": total}}
+
+
 @app.put("/api/v1/reports/{report_id}/review", response_model=ReportReviewResponse)
 def review_report(
     report_id: str,
@@ -638,10 +655,14 @@ def review_report(
     if payload.status == 'finalized':
         ensure_scopes(auth, ('finalize:reports',))
 
+    ensure_initial_report_revision(db, report=report, auth=auth)
+
     report.doctor_review = payload.doctor_review
     report.status = payload.status
     if payload.modified_findings:
         report.image.detections = payload.modified_findings
+
+    revision = create_report_revision(db, report=report, auth=auth)
 
     create_user_audit_log(
         db,
@@ -653,6 +674,19 @@ def review_report(
             'image_id': report.image.image_id,
             'report_status': payload.status,
             'findings_modified': bool(payload.modified_findings),
+        },
+    )
+    create_user_audit_log(
+        db,
+        auth=auth,
+        action='report.revision_created',
+        resource_type='report',
+        resource_id=report.report_id,
+        detail={
+            'image_id': report.image.image_id,
+            'revision_id': revision.revision_id,
+            'version_no': revision.version_no,
+            'report_status': revision.status,
         },
     )
 

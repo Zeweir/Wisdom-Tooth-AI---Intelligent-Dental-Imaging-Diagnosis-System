@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import ReportRevisionDrawer from './ReportRevisionDrawer.vue'
 import type { AnalysisItem } from '../types/analysis'
 import { getReportStatusLabel, getReportStatusTagType } from '../utils/display'
 
@@ -16,6 +17,7 @@ const currentStatusLabel = computed(() => (props.currentRecord ? getReportStatus
 const currentStatusTagType = computed(() => (props.currentRecord ? getReportStatusTagType(props.currentRecord.report.status) : 'info'))
 const reviewTextLength = computed(() => reviewText.value.trim().length)
 const reportTextLength = computed(() => props.currentRecord?.report.content.length ?? 0)
+const revisionDrawerVisible = ref(false)
 const reportSteps = computed(() => {
   const status = props.currentRecord?.report.status
   return [
@@ -189,9 +191,15 @@ function handleExportHtml() {
       <div class="actions report-action-bar">
         <el-button type="primary" :disabled="!canSubmit" @click="emit('submit')">保存审核意见</el-button>
         <el-button type="success" :disabled="!canFinalize" @click="emit('finalize')">确认为正式报告</el-button>
+        <el-button :disabled="!currentRecord" @click="revisionDrawerVisible = true">版本记录</el-button>
         <el-button :disabled="!currentRecord" @click="handlePrintReport">打印预览</el-button>
         <el-button :disabled="!currentRecord" @click="handleExportHtml">导出 HTML</el-button>
       </div>
     </template>
   </el-card>
+
+  <ReportRevisionDrawer
+    v-model:visible="revisionDrawerVisible"
+    :report-id="currentRecord?.report.report_id ?? null"
+  />
 </template>

@@ -16,6 +16,7 @@
 - AI 分析结果查询
 - 报告医生审核
 - 患者历史报告预览与工作站病例深链接
+- 报告版本历史与归档追踪
 - WebSocket 分析事件演示
 - PostgreSQL 持久化存储
 - MinIO 文件存储
@@ -180,6 +181,7 @@ Docker 前端构建会读取 `frontend/.env.local` 中的 Logto 配置，尤其�
 - `GET /api/v1/analysis/{image_id}`
 - `GET /api/v1/images/{image_id}/file`
 - `PUT /api/v1/reports/{report_id}/review`
+- `GET /api/v1/reports/{report_id}/revisions`
 - `GET /api/v1/audit-logs`
 - `WS /ws/analysis/{image_id}`
 
@@ -208,6 +210,7 @@ Docker 前端构建会读取 `frontend/.env.local` 中的 Logto 配置，尤其�
 - 前端已支持报告 HTML 导出、浏览器打印预览和影像检测框叠加展示
 - 前端已支持 `/workspace?image_id=<id>` 深链接，可从首页和患者病例时间线直接打开指定病例
 - 患者档案已支持历史病例报告预览、医生意见摘要和归档状态查看
+- 报告审核与正式确认会自动生成报告版本快照，支持在工作站和患者档案查看版本历史
 - 审计中心已支持报告审核、正式确认、数据导入、患者更新等常用快捷筛选
 - 提供 `docker-compose.yml` 支持数据库、后端、前端一键启动
 
@@ -225,3 +228,4 @@ Docker 前端构建会读取 `frontend/.env.local` 中的 Logto 配置，尤其�
 - 患者档案的历史病例同时提供“查看报告”和“打开病例”。
 - 工作站会优先读取 URL 中的 `image_id` 并打开对应病例；如果没有指定，则沿用病例队列默认选择。
 - 报告预览第一版复用现有分析记录中的 `report.content`、`doctor_review`、检测结果和更新时间，不额外生成 PDF。
+- 报告版本历史通过 `GET /api/v1/reports/{report_id}/revisions` 读取；首次审核旧报告时会补一条 AI 草稿快照，之后每次审核或正式确认都会新增版本记录。

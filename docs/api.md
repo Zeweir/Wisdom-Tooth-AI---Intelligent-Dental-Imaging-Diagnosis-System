@@ -147,6 +147,13 @@
 - Body：`doctor_review`、`modified_findings`、`status`。
 - `status` 可为 `doctor_reviewed` 或 `finalized`。
 - 患者档案中的报告预览复用影像详情中的 `report.content`、`report.doctor_review`、`report.status` 和检测结果，不新增报告预览接口。
+- 成功保存审核意见或正式确认后，后端会自动写入一条报告版本快照，并记录 `report.revision_created` 审计事件。
+
+- `GET /api/v1/reports/{report_id}/revisions`
+- 需要 `read:images`。
+- Query：`limit`、`offset`。
+- 返回分页报告版本历史，字段包括 `revision_id`、`report_id`、`image_id`、`version_no`、`status`、`content`、`doctor_review`、`detections`、`actor_sub`、`actor_roles`、`created_at`。
+- 版本历史用于工作站和患者档案复核报告从 AI 草稿、医生审核到正式确认的流转过程。
 
 ## 审计日志
 
@@ -154,7 +161,7 @@
 - 需要 `review:reports`。
 - Query：`limit`、`offset`、`action`、`resource_type`、`resource_id`、`actor_sub`。
 - 返回分页后的审计日志。
-- 前端审计中心提供报告审核、正式确认、数据集导入、患者更新、影像上传等快捷筛选，本质仍是填充上述 Query 参数。
+- 前端审计中心提供报告审核、正式确认、报告版本记录、数据集导入、样本包上传、训练集划分、模型评估、患者更新、影像上传等快捷筛选，本质仍是填充上述 Query 参数。
 
 ## WebSocket
 

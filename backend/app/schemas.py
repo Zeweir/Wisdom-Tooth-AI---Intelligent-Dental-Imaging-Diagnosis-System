@@ -96,6 +96,26 @@ class ReportReviewResponse(BaseModel):
     data: ReportReviewResponseData
 
 
+class ReportRevisionPayload(BaseModel):
+    revision_id: str
+    report_id: str
+    image_id: str
+    version_no: int
+    status: ReportStatus
+    content: str
+    doctor_review: str | None
+    detections: list[dict[str, Any]]
+    actor_sub: str
+    actor_roles: list[str]
+    created_at: datetime
+
+
+class ReportRevisionListResponse(BaseModel):
+    code: int
+    data: list[ReportRevisionPayload]
+    meta: PaginationMeta
+
+
 class AuditLogPayload(BaseModel):
     audit_log_id: str
     actor_sub: str

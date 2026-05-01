@@ -33,6 +33,11 @@ const todayStats = computed(() => [
     value: dashboardSummary.value?.processing_images ?? records.value.filter((item) => item.status === 'processing').length,
     description: 'AI 分析仍在进行的任务',
   },
+  {
+    label: '数据集来源',
+    value: dashboardSummary.value?.dataset_count ?? 0,
+    description: `开放来源 ${dashboardSummary.value?.open_dataset_count ?? 0} 个`,
+  },
 ])
 </script>
 
@@ -46,6 +51,7 @@ const todayStats = computed(() => [
         <div class="hero-actions">
           <RouterLink to="/workspace" class="el-button el-button--primary"><span>进入影像工作站</span></RouterLink>
           <RouterLink v-if="canReadImages" to="/patients" class="el-button is-plain"><span>患者档案</span></RouterLink>
+          <RouterLink v-if="canReadImages" to="/datasets" class="el-button is-plain"><span>数据集中心</span></RouterLink>
         </div>
       </div>
       <div class="hero-summary-card">
