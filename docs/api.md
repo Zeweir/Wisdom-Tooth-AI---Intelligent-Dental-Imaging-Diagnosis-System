@@ -91,7 +91,12 @@
 - `POST /api/v1/datasets/{dataset_id}/imports`
 - 需要 `upload:images`。
 - Body：`import_method`、`source_path`、`sample_count`、`annotation_format`、`image_type`、`notes`。
-- 支持 `local_directory`、`zip_upload`、`manual_summary`。
+- 支持 `local_directory`、`zip_upload`、`manual_summary`、`url_download`。
+
+- `POST /api/v1/datasets/{dataset_id}/imports/download-url`
+- 需要 `upload:images`。
+- Body：`source_url`、`sample_count`、`annotation_format`、`image_type`、`notes`。
+- 下载可匿名访问的公开 zip 直链，保存到对象存储/本地存储，并复用 zip 索引逻辑生成样本索引。Kaggle 页面地址通常不是 zip 直链。
 
 - `POST /api/v1/dataset-imports/{import_id}/upload-zip`
 - 需要 `upload:images`。
@@ -129,7 +134,7 @@
 - 需要 `upload:images`。
 - FormData：`file`、`patient_id`、`image_type`、可选 `patient_name`。
 - 上传时如果患者档案不存在，会自动创建最小患者档案。
-- 返回新影像 `image_id` 和处理状态。
+- 返回新影像 `image_id` 和处理状态。后台分析优先使用配置的 YOLO 权重；未配置或推理失败时回退到 Ollama / mock。
 
 - `GET /api/v1/analysis/{image_id}`
 - 需要 `read:images`。

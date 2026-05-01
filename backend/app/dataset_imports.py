@@ -5,6 +5,9 @@ import zipfile
 from io import BytesIO
 from pathlib import Path
 from typing import Any
+from urllib import request
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlparse
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
@@ -12,15 +15,16 @@ from sqlalchemy.orm import Session
 
 from app.datasets import get_dataset_or_404
 from app.models import DatasetImportRecord, DatasetSampleRecord
-from app.schemas import DatasetImportCreateRequest, DatasetSplitRequest
+from app.schemas import DatasetImportCreateRequest, DatasetImportDownloadRequest, DatasetSplitRequest
 from app.services import now_utc
-from app.storage import StoredObject
+from app.storage import StoredObject, storage_service
 
 
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff', '.dcm'}
 ANNOTATION_EXTENSIONS = {'.json', '.txt', '.xml', '.csv'}
 MAX_ZIP_SIZE_BYTES = 200 * 1024 * 1024
 MAX_INDEXED_FILES = 2000
+DATASET_DOWNLOAD_TIMEOUT_SECONDS = 120
 
 
 def infer_file_type(filename: str) -> str:
@@ -105,6 +109,71 @@ def create_dataset_import(db: Session, *, dataset_id: str, payload: DatasetImpor
     if payload.import_method == 'manual_summary' and payload.sample_count > 0:
         create_placeholder_samples(db, item, payload.sample_count)
     return item
+
+
+def download_dataset_zip(source_url: str) -> tuple[bytes, str, str | None]:
+    parsed = urlparse(source_url)
+    if parsed.scheme not in {'http', 'https'}:
+        raise HTTPException(status_code=400, detail='仅支持 http/https 数据集 zip 直链')
+
+    req = request.Request(source_url, headers={'User-Agent': 'Wisdom-Tooth-AI/0.1'})
+    try:
+        with request.urlopen(req, timeout=DATASET_DOWNLOAD_TIMEOUT_SECONDS) as response:
+            content_length = response.headers.get('Content-Length')
+            if content_length and int(content_length) > MAX_ZIP_SIZE_BYTES:
+                raise HTTPException(status_code=413, detail='数据集 zip 超过 200MB 限制')
+            content_type = response.headers.get('Content-Type')
+            file_bytes = response.read(MAX_ZIP_SIZE_BYTES + 1)
+    except HTTPException:
+        raise
+    except HTTPError as exc:
+        raise HTTPException(status_code=400, detail=f'数据集下载失败，HTTP {exc.code}') from exc
+    except URLError as exc:
+        raise HTTPException(status_code=400, detail=f'数据集下载失败：{exc.reason}') from exc
+    except TimeoutError as exc:
+        raise HTTPException(status_code=408, detail='数据集下载超时') from exc
+
+    if len(file_bytes) > MAX_ZIP_SIZE_BYTES:
+        raise HTTPException(status_code=413, detail='数据集 zip 超过 200MB 限制')
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail='数据集下载内容为空')
+
+    filename = Path(parsed.path).name or 'dataset.zip'
+    if not filename.lower().endswith('.zip'):
+        filename = f'{filename}.zip'
+    return file_bytes, filename, content_type
+
+
+def create_dataset_import_from_url(
+    db: Session,
+    *,
+    dataset_id: str,
+    payload: DatasetImportDownloadRequest,
+) -> tuple[DatasetImportRecord, int]:
+    get_dataset_or_404(db, dataset_id)
+    file_bytes, filename, content_type = download_dataset_zip(payload.source_url)
+    item = DatasetImportRecord(
+        dataset_id=dataset_id,
+        import_method='url_download',
+        source_path=payload.source_url,
+        sample_count=payload.sample_count,
+        annotation_format=payload.annotation_format,
+        image_type=payload.image_type,
+        status='downloaded',
+        notes=payload.notes,
+    )
+    db.add(item)
+    db.flush()
+    stored_object = storage_service.save_dataset_file(
+        file_bytes=file_bytes,
+        filename=filename,
+        content_type=content_type,
+    )
+    indexed = index_zip_upload(db, item=item, file_bytes=file_bytes, stored_object=stored_object)
+    item.source_path = payload.source_url
+    item.status = 'indexed'
+    item.updated_at = now_utc()
+    return item, indexed
 
 
 def create_placeholder_samples(db: Session, item: DatasetImportRecord, sample_count: int) -> None:

@@ -36,6 +36,7 @@ function getAuditActionLabel(action: string) {
     'report.revision_created': '报告版本记录',
     'dataset_import.created': '数据导入',
     'dataset_import.zip_uploaded': '样本包上传',
+    'dataset_import.url_downloaded': '直链下载导入',
     'dataset_import.split_created': '训练集划分',
     'dataset.seeded': '公开清单初始化',
     'dataset.created': '数据集登记',

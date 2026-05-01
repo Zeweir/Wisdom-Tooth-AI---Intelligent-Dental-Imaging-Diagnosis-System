@@ -4,6 +4,7 @@ from typing import Any
 from app.models import ImageRecord, ReportRecord
 from app.ollama import OllamaError, generate_multimodal_analysis, is_ollama_enabled
 from app.schemas import ImageType
+from app.yolo import YoloError, is_yolo_enabled, run_yolo_analysis
 
 
 def now_utc() -> datetime:
@@ -53,7 +54,7 @@ def build_report_content(patient_id: str, image_type: ImageType, detections: lis
     findings = '；'.join(
         f"牙位{item['tooth_id']}提示{item['class']}（{item['severity']}，置信度{item['confidence']:.0%}）"
         for item in detections
-    )
+    ) or '未检出明确高置信度病灶'
     return (
         f'患者 {patient_id} 的{image_type}影像已完成初步分析。'
         f'影像描述：{findings}。'
@@ -108,6 +109,21 @@ def build_fallback_analysis(image: ImageRecord) -> dict[str, Any]:
 
 def generate_analysis_result(image: ImageRecord, image_bytes: bytes | None) -> dict[str, Any]:
     fallback = build_fallback_analysis(image)
+    if image_bytes and is_yolo_enabled():
+        try:
+            yolo_result = run_yolo_analysis(image_bytes=image_bytes, filename=image.filename)
+            detections = normalize_detection_payload(yolo_result.detections)
+            return {
+                'detections': detections,
+                'report': build_report_content(image.patient_id, image.image_type, detections),
+                'summary': '使用 YOLO 模型完成牙科影像检测。',
+                'source': 'yolo',
+                'model': yolo_result.model,
+                'error': None,
+            }
+        except YoloError as exc:
+            fallback['error'] = str(exc)
+
     if not image_bytes or not is_ollama_enabled():
         return fallback
 

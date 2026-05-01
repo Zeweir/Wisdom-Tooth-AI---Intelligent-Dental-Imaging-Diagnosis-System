@@ -17,6 +17,9 @@ env/
 # Backend runtime files
 backend/uploads/
 backend/.env
+models/
+*.pt
+*.onnx
 
 # Frontend dependencies and builds
 frontend/node_modules/

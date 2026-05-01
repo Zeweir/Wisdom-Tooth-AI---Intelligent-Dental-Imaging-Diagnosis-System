@@ -3,6 +3,7 @@ import type {
   DatasetCatalog,
   DatasetCatalogPayload,
   DatasetFilters,
+  DatasetImportDownloadPayload,
   DatasetImportPayload,
   DatasetImportRecord,
   DatasetSampleRecord,
@@ -76,6 +77,14 @@ export async function listDatasetImports(
 
 export async function createDatasetImport(datasetId: string, payload: DatasetImportPayload) {
   const response = await http.post<{ code: number; data: DatasetImportRecord }>(`/api/v1/datasets/${datasetId}/imports`, payload)
+  return response.data.data
+}
+
+export async function downloadDatasetZip(datasetId: string, payload: DatasetImportDownloadPayload) {
+  const response = await http.post<{ code: number; data: DatasetImportRecord }>(
+    `/api/v1/datasets/${datasetId}/imports/download-url`,
+    payload,
+  )
   return response.data.data
 }
 

@@ -6,6 +6,7 @@ import {
   createDataset,
   createDatasetImport,
   createModelEvaluation,
+  downloadDatasetZip,
   listDatasetImports,
   listDatasetSamples,
   listDatasets,
@@ -128,7 +129,7 @@ const datasetPipelineSteps = [
   },
   {
     title: '导入样本索引',
-    description: '登记本地目录、上传 zip 或录入手动统计，系统索引影像与 YOLO/COCO 等标注文件。',
+    description: '登记本地目录、上传 zip、公开直链下载或录入手动统计，系统索引影像与 YOLO/COCO 等标注文件。',
   },
   {
     title: '划分训练集合',
@@ -361,15 +362,30 @@ async function submitImport() {
     ElMessage.warning('请先选择 zip 样本包')
     return
   }
+  if (importForm.import_method === 'url_download' && !importForm.source_path) {
+    ElMessage.warning('请填写可直接下载的 zip URL')
+    return
+  }
   const selectedZipFile = zipFile.value
-  const created = await createDatasetImport(selectedDataset.value.dataset_id, {
-    ...importForm,
-    source_path: importForm.source_path || null,
-    annotation_format: importForm.annotation_format || null,
-    notes: importForm.notes || null,
-  })
-  if (importForm.import_method === 'zip_upload' && selectedZipFile) {
-    await uploadDatasetZip(created.import_id, selectedZipFile)
+  const sourceUrl = importForm.source_path || ''
+  if (importForm.import_method === 'url_download') {
+    await downloadDatasetZip(selectedDataset.value.dataset_id, {
+      source_url: sourceUrl,
+      sample_count: importForm.sample_count,
+      annotation_format: importForm.annotation_format || null,
+      image_type: importForm.image_type,
+      notes: importForm.notes || null,
+    })
+  } else {
+    const created = await createDatasetImport(selectedDataset.value.dataset_id, {
+      ...importForm,
+      source_path: importForm.source_path || null,
+      annotation_format: importForm.annotation_format || null,
+      notes: importForm.notes || null,
+    })
+    if (importForm.import_method === 'zip_upload' && selectedZipFile) {
+      await uploadDatasetZip(created.import_id, selectedZipFile)
+    }
   }
   ElMessage.success('导入批次已创建')
   importDialogVisible.value = false
@@ -619,7 +635,7 @@ onMounted(async () => {
 
         <el-tabs v-model="activeDatasetTab" class="dataset-tabs">
           <el-tab-pane label="导入批次" name="imports">
-            <div class="dataset-tab-note">记录本地目录、ZIP 样本包或手动统计，后续训练前先确认样本索引。</div>
+            <div class="dataset-tab-note">记录本地目录、ZIP 样本包、公开 ZIP 直链或手动统计，后续训练前先确认样本索引。</div>
             <el-skeleton v-if="importsLoading" :rows="4" animated />
             <el-empty v-else-if="imports.length === 0" description="暂无导入批次，可登记本地目录、手动统计或上传 zip" />
             <el-table v-else :data="imports" stripe>
@@ -797,11 +813,18 @@ onMounted(async () => {
           <el-select v-model="importForm.import_method" class="w-full">
             <el-option label="本地目录登记" value="local_directory" />
             <el-option label="ZIP 样本包上传" value="zip_upload" />
+            <el-option label="公开 ZIP 直链下载" value="url_download" />
             <el-option label="手动统计录入" value="manual_summary" />
           </el-select>
         </el-form-item>
         <el-form-item v-if="importForm.import_method !== 'manual_summary'" label="来源路径 / 说明">
-          <el-input v-model="importForm.source_path" placeholder="例如 D:\\datasets\\dentex 或样本包来源说明" />
+          <el-input
+            v-model="importForm.source_path"
+            :placeholder="importForm.import_method === 'url_download' ? 'https://example.com/dataset.zip' : '例如 D:\\datasets\\dentex 或样本包来源说明'"
+          />
+          <div v-if="importForm.import_method === 'url_download'" class="dataset-tab-note">
+            请输入可匿名直接下载的 zip 文件地址；Kaggle 页面地址通常不是 zip 直链。
+          </div>
         </el-form-item>
         <el-form-item v-if="importForm.import_method === 'zip_upload'" label="ZIP 样本包">
           <el-upload :auto-upload="false" :limit="1" :on-change="handleZipChange">

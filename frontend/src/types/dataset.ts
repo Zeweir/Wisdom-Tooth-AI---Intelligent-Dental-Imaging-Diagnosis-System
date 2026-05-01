@@ -46,7 +46,7 @@ export interface PaginatedDatasetsResult {
   meta: PaginationMeta
 }
 
-export type DatasetImportMethod = 'local_directory' | 'zip_upload' | 'manual_summary'
+export type DatasetImportMethod = 'local_directory' | 'zip_upload' | 'manual_summary' | 'url_download'
 
 export interface DatasetImportRecord {
   import_id: string
@@ -69,6 +69,14 @@ export interface DatasetImportRecord {
 export interface DatasetImportPayload {
   import_method: DatasetImportMethod
   source_path?: string | null
+  sample_count: number
+  annotation_format?: string | null
+  image_type: string
+  notes?: string | null
+}
+
+export interface DatasetImportDownloadPayload {
+  source_url: string
   sample_count: number
   annotation_format?: string | null
   image_type: string

@@ -14,6 +14,7 @@ from app.config import ALLOWED_ORIGINS
 from app.database import SessionLocal, get_db
 from app.dataset_imports import (
     create_dataset_import,
+    create_dataset_import_from_url,
     get_import_or_404,
     index_zip_upload,
     list_dataset_imports,
@@ -45,6 +46,7 @@ from app.schemas import (
     DatasetCatalogResponse,
     DatasetCatalogUpdateRequest,
     DatasetImportCreateRequest,
+    DatasetImportDownloadRequest,
     DatasetImportListResponse,
     DatasetImportResponse,
     DatasetSampleListResponse,
@@ -292,6 +294,32 @@ def post_dataset_import(
         resource_type='dataset_import',
         resource_id=item.import_id,
         detail={'dataset_id': dataset_id, 'import_method': item.import_method, 'sample_count': item.sample_count},
+    )
+    db.commit()
+    db.refresh(item)
+    return {"code": 200, "data": serialize_dataset_import(item)}
+
+
+@app.post("/api/v1/datasets/{dataset_id}/imports/download-url", response_model=DatasetImportResponse)
+def post_dataset_import_download_url(
+    dataset_id: str,
+    payload: DatasetImportDownloadRequest,
+    auth: AuthInfo = Depends(require_api_auth('upload:images')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    item, indexed = create_dataset_import_from_url(db, dataset_id=dataset_id, payload=payload)
+    create_user_audit_log(
+        db,
+        auth=auth,
+        action='dataset_import.url_downloaded',
+        resource_type='dataset_import',
+        resource_id=item.import_id,
+        detail={
+            'dataset_id': dataset_id,
+            'source_url': payload.source_url,
+            'indexed': indexed,
+            'storage_object_key': item.storage_object_key,
+        },
     )
     db.commit()
     db.refresh(item)

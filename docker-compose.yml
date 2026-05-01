@@ -92,8 +92,16 @@ services:
       OLLAMA_BASE_URL: http://10.41.33.17:11434
       OLLAMA_MODEL: qwen3.5:9b
       OLLAMA_TIMEOUT_SECONDS: 120
+      YOLO_ENABLED: true
+      YOLO_MODEL_PATH: /models/dental-yolo.pt
+      YOLO_CONF_THRESHOLD: 0.25
+      YOLO_IMAGE_SIZE: 1024
+      YOLO_DEVICE: ""
+      YOLO_CLASS_MAP_JSON: ""
     ports:
       - "8000:8000"
+    volumes:
+      - ./models:/models:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -130,6 +138,14 @@ services:
       OLLAMA_BASE_URL: http://10.41.33.17:11434
       OLLAMA_MODEL: qwen3.5:9b
       OLLAMA_TIMEOUT_SECONDS: 120
+      YOLO_ENABLED: true
+      YOLO_MODEL_PATH: /models/dental-yolo.pt
+      YOLO_CONF_THRESHOLD: 0.25
+      YOLO_IMAGE_SIZE: 1024
+      YOLO_DEVICE: ""
+      YOLO_CLASS_MAP_JSON: ""
+    volumes:
+      - ./models:/models:ro
     depends_on:
       postgres:
         condition: service_healthy

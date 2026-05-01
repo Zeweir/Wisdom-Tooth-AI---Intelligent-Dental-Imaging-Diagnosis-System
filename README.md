@@ -22,6 +22,7 @@
 - MinIO 文件存储
 - Logto 登录、JWT 鉴权与角色权限控制
 - Celery + Redis 后台分析任务
+- 可选 YOLOv8 本地权重推理（失败时自动回退到 Ollama / mock）
 - 本地 Ollama 多模态报告生成（失败时自动回退到内置 mock）
 
 ## 目录结构
@@ -72,6 +73,19 @@ OLLAMA_BASE_URL=http://10.41.33.17:11434
 OLLAMA_MODEL=qwen3.5:9b
 OLLAMA_TIMEOUT_SECONDS=120
 ```
+
+如需启用真实 YOLO 牙片检测，请将权重文件放在仓库外或本地 `models/` 目录，并配置：
+
+```env
+YOLO_ENABLED=true
+YOLO_MODEL_PATH=C:\models\dental-yolo.pt
+YOLO_CONF_THRESHOLD=0.25
+YOLO_IMAGE_SIZE=1024
+YOLO_DEVICE=
+YOLO_CLASS_MAP_JSON=
+```
+
+`YOLO_MODEL_PATH` 为空或文件不存在时，系统会自动跳过 YOLO，继续使用 Ollama / mock 分析。Docker Compose 默认把 `./models` 挂载到容器 `/models`，可将权重放到 `models/dental-yolo.pt`。
 
 ### 2. 启动后端
 
@@ -171,6 +185,7 @@ Docker 前端构建会读取 `frontend/.env.local` 中的 Logto 配置，尤其�
 - `PUT /api/v1/datasets/{dataset_id}`
 - `GET /api/v1/datasets/{dataset_id}/imports`
 - `POST /api/v1/datasets/{dataset_id}/imports`
+- `POST /api/v1/datasets/{dataset_id}/imports/download-url`
 - `POST /api/v1/dataset-imports/{import_id}/upload-zip`
 - `GET /api/v1/dataset-imports/{import_id}/samples`
 - `POST /api/v1/dataset-imports/{import_id}/split`
@@ -193,6 +208,7 @@ Docker 前端构建会读取 `frontend/.env.local` 中的 Logto 配置，尤其�
 - 已引入 `Alembic` 管理数据库迁移
 - 上传文件已支持通过 `MinIO` 存储
 - AI 分析任务已切换为 `Celery + Redis`
+- 已支持优先调用本地 `YOLO` 权重进行检测，未配置或失败时回退到 `Ollama` / mock
 - 已支持优先调用本地 `Ollama` 多模态模型生成检测结果与中文报告
 - 当 Ollama 不可达或返回异常时，会自动回退到内置 mock 分析结果
 - 前端已拆分为 `api / types / components` 结构
@@ -205,7 +221,7 @@ Docker 前端构建会读取 `frontend/.env.local` 中的 Logto 配置，尤其�
 - 已提供审计日志表与关键动作留痕
 - 已支持影像列表、审计日志分页查询与工作台摘要统计
 - 已支持患者档案、患者搜索、病例时间线和上传时自动建档
-- 已支持公开数据集登记、seed 初始化、筛选和数据准备指标
+- 已支持公开数据集登记、seed 初始化、筛选、公开 zip 直链下载和数据准备指标
 - 已支持数据集导入批次、样本索引、训练集划分和模型评估记录
 - 前端已支持报告 HTML 导出、浏览器打印预览和影像检测框叠加展示
 - 前端已支持 `/workspace?image_id=<id>` 深链接，可从首页和患者病例时间线直接打开指定病例

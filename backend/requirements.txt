@@ -8,3 +8,5 @@ minio==7.2.12
 pyjwt[crypto]==2.10.1
 celery==5.4.0
 redis==5.2.0
+Pillow==11.0.0
+ultralytics==8.3.38

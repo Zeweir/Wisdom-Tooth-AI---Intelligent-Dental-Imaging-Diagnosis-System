@@ -23,6 +23,13 @@ def env_int(name: str, default: int) -> int:
     return int(value)
 
 
+def env_float(name: str, default: float) -> float:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return float(value)
+
+
 BASE_DIR = Path(__file__).resolve().parents[1]
 UPLOAD_DIR = BASE_DIR / 'uploads'
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -53,6 +60,13 @@ OLLAMA_ENABLED = env_flag('OLLAMA_ENABLED', True)
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://10.41.33.17:11434')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'qwen3.5:9b')
 OLLAMA_TIMEOUT_SECONDS = env_int('OLLAMA_TIMEOUT_SECONDS', 120)
+
+YOLO_ENABLED = env_flag('YOLO_ENABLED', True)
+YOLO_MODEL_PATH = os.getenv('YOLO_MODEL_PATH', '')
+YOLO_CONF_THRESHOLD = env_float('YOLO_CONF_THRESHOLD', 0.25)
+YOLO_IMAGE_SIZE = env_int('YOLO_IMAGE_SIZE', 1024)
+YOLO_DEVICE = os.getenv('YOLO_DEVICE', '')
+YOLO_CLASS_MAP_JSON = os.getenv('YOLO_CLASS_MAP_JSON', '')
 
 ALLOWED_ORIGINS = [
     'http://localhost:5173',

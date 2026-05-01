@@ -291,8 +291,16 @@ class DatasetImportResponse(BaseModel):
 
 
 class DatasetImportCreateRequest(BaseModel):
-    import_method: Literal['local_directory', 'zip_upload', 'manual_summary']
+    import_method: Literal['local_directory', 'zip_upload', 'manual_summary', 'url_download']
     source_path: str | None = None
+    sample_count: int = Field(default=0, ge=0)
+    annotation_format: str | None = None
+    image_type: str = 'panoramic'
+    notes: str | None = None
+
+
+class DatasetImportDownloadRequest(BaseModel):
+    source_url: str
     sample_count: int = Field(default=0, ge=0)
     annotation_format: str | None = None
     image_type: str = 'panoramic'
