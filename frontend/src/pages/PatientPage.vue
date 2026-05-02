@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRoute } from 'vue-router'
 
 import { createPatient, listPatientImages, listPatients, updatePatient } from '../api/patients'
 import ReportRevisionDrawer from '../components/ReportRevisionDrawer.vue'
@@ -11,6 +12,7 @@ import { getImageTypeLabel, getReportStatusLabel, getReportStatusTagType } from 
 import { useWorkbenchContext } from '../workbench'
 
 const workbench = useWorkbenchContext()
+const route = useRoute()
 const isAuthenticated = workbench.isAuthenticated
 const authReady = workbench.authReady
 const canReadImages = workbench.canReadImages
@@ -45,6 +47,11 @@ const patientTitle = computed(() => selectedPatient.value ? `${selectedPatient.v
 const latestImageLabel = computed(() => selectedPatient.value?.latest_image_at ? new Date(selectedPatient.value.latest_image_at).toLocaleString() : '暂无影像')
 const previewReportStatusLabel = computed(() => previewReport.value ? getReportStatusLabel(previewReport.value.report.status) : '')
 const previewReportStatusType = computed(() => previewReport.value ? getReportStatusTagType(previewReport.value.report.status) : 'info')
+
+function getQueryValue(key: string) {
+  const value = route.query[key]
+  return Array.isArray(value) ? value[0] : value
+}
 
 function openReportPreview(image: AnalysisItem) {
   previewReport.value = image
@@ -132,6 +139,21 @@ async function applySearch() {
   await refreshPatientImages()
 }
 
+async function applyRouteQuery() {
+  const patientId = getQueryValue('patient_id')
+  const queryKeyword = getQueryValue('keyword')
+  const nextKeyword = patientId || queryKeyword
+  if (nextKeyword && keyword.value !== nextKeyword) {
+    keyword.value = nextKeyword
+  }
+  await refreshPatients()
+  if (patientId && patients.value.some((item) => item.patient_id === patientId)) {
+    await selectPatient(patientId)
+    return
+  }
+  await refreshPatientImages()
+}
+
 async function handlePageChange(page: number) {
   pagination.value = { ...pagination.value, offset: (page - 1) * pagination.value.limit }
   await refreshPatients()
@@ -173,14 +195,22 @@ watch(selectedPatientId, async () => {
 
 watch(canReadImages, async (value) => {
   if (value) {
-    await refreshPatients()
+    await applyRouteQuery()
   }
 })
 
+watch(
+  () => route.query,
+  async () => {
+    if (canReadImages.value) {
+      await applyRouteQuery()
+    }
+  },
+)
+
 onMounted(async () => {
   if (canReadImages.value) {
-    await refreshPatients()
-    await refreshPatientImages()
+    await applyRouteQuery()
   }
 })
 </script>
@@ -218,7 +248,14 @@ onMounted(async () => {
         </div>
 
         <el-skeleton v-if="loading" :rows="5" animated />
-        <el-empty v-else-if="patients.length === 0" description="暂无患者档案" />
+        <div v-else-if="patients.length === 0" class="empty-action-card">
+          <strong>未找到患者档案</strong>
+          <p>可以调整关键词重新搜索，或新建患者后再上传影像。</p>
+          <div class="quick-action-row">
+            <el-button @click="keyword = ''; applySearch()">清空筛选</el-button>
+            <el-button v-if="canUpload" type="primary" @click="openCreateDialog">新建患者</el-button>
+          </div>
+        </div>
         <div v-else class="record-list patient-list">
           <button
             v-for="patient in patients"
@@ -259,7 +296,10 @@ onMounted(async () => {
             </div>
           </template>
 
-          <el-empty v-if="!selectedPatient" description="请选择患者" />
+          <div v-if="!selectedPatient" class="empty-action-card">
+            <strong>请选择患者</strong>
+            <p>选择左侧患者后，可查看基础档案、历史影像和报告预览。</p>
+          </div>
           <template v-else>
             <div class="patient-summary-grid">
               <div class="clinical-metric">
@@ -295,7 +335,11 @@ onMounted(async () => {
           </template>
 
           <el-skeleton v-if="imagesLoading" :rows="4" animated />
-          <el-empty v-else-if="patientImages.length === 0" description="暂无历史影像" />
+          <div v-else-if="patientImages.length === 0" class="empty-action-card">
+            <strong>暂无历史影像</strong>
+            <p>为该患者上传影像后，病例会自动归档到这里。</p>
+            <RouterLink to="/workspace" class="el-button el-button--primary"><span>上传影像</span></RouterLink>
+          </div>
           <div v-else class="patient-timeline">
             <div v-for="image in patientImages" :key="image.image_id" class="audit-card">
               <div class="audit-card-header">
@@ -316,7 +360,7 @@ onMounted(async () => {
               <div class="record-meta">
                 <el-button text @click="openReportPreview(image)">查看报告</el-button>
                 <RouterLink
-                  :to="{ path: '/diagnosis', query: { image_id: image.image_id } }"
+                  :to="{ path: '/workspace', query: { image_id: image.image_id } }"
                   class="el-button el-button--primary is-plain"
                 >
                   <span>打开病例</span>
@@ -418,10 +462,10 @@ onMounted(async () => {
         <div class="quick-action-row">
           <el-button @click="revisionDrawerVisible = true">查看版本历史</el-button>
           <RouterLink
-            :to="{ path: '/diagnosis', query: { image_id: previewReport.image_id } }"
+            :to="{ path: '/workspace', query: { image_id: previewReport.image_id } }"
             class="el-button el-button--primary"
           >
-            <span>到诊断页继续处理</span>
+            <span>到工作站继续处理</span>
           </RouterLink>
         </div>
       </div>

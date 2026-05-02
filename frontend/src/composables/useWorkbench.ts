@@ -1,15 +1,15 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useLogto } from '@logto/vue'
-import { ElMessage } from 'element-plus'
 
-import { getAuditLogs } from '../api/audit'
 import { getAuthProfile, getRbacModel } from '../api/auth'
-import { createAnalysisSocket, getAnalysis, getDashboardSummary, listImages, reviewReport, uploadImage } from '../api/analysis'
 import { logtoApiResource, setAccessTokenProvider } from '../api/http'
-import type { AnalysisFilters, AnalysisItem, DashboardSummary, PaginationMeta } from '../types/analysis'
-import type { AuditLogFilters, AuditLogItem, AuditLogPagination } from '../types/audit'
 import type { AuthProfile, MenuCapability, RbacModel } from '../types/auth'
 import type { WorkbenchContext } from '../workbench'
+import { useWorkbenchAudit } from './workbench/useWorkbenchAudit'
+import { useWorkbenchDashboard } from './workbench/useWorkbenchDashboard'
+import { useWorkbenchRecords } from './workbench/useWorkbenchRecords'
+import { useWorkbenchReports } from './workbench/useWorkbenchReports'
+import { useWorkbenchUpload } from './workbench/useWorkbenchUpload'
 
 type BasicClaims = {
   name?: string
@@ -20,41 +20,12 @@ type BasicClaims = {
 export function useWorkbench(): WorkbenchContext {
   const { fetchUserInfo, getAccessToken, getIdTokenClaims, isAuthenticated, isLoading, signIn, signOut } = useLogto()
 
-  const loading = ref(false)
-  const records = ref<AnalysisItem[]>([])
-  const selectedImageId = ref('')
-  const reviewText = ref('')
-  const socketEvents = ref<string[]>([])
   const authReady = ref(false)
   const displayName = ref('')
   const authProfile = ref<AuthProfile | null>(null)
   const rbacModel = ref<RbacModel | null>(null)
-  const auditLogs = ref<AuditLogItem[]>([])
-  const auditFilters = ref<AuditLogFilters>({
-    action: '',
-    resource_type: '',
-    resource_id: '',
-    actor_sub: ''
-  })
-  const auditPagination = ref<AuditLogPagination>({
-    limit: 10,
-    offset: 0,
-    total: 0
-  })
   const authScopes = ref<string[]>([])
-  const dashboardSummary = ref<DashboardSummary | null>(null)
-  const recordsPagination = ref<PaginationMeta>({
-    limit: 10,
-    offset: 0,
-    total: 0
-  })
-  const filters = ref<AnalysisFilters>({
-    patient_id: '',
-    image_type: '',
-    report_status: ''
-  })
 
-  const currentRecord = computed(() => records.value.find((item) => item.image_id === selectedImageId.value) ?? null)
   const visibleMenus = computed(() => authProfile.value?.menus.filter((item: MenuCapability) => item.visible) ?? [])
   const currentRoles = computed(() => authProfile.value?.roles ?? [])
   const tokenRoleLabels = computed(() => authProfile.value?.token_roles ?? [])
@@ -113,10 +84,7 @@ export function useWorkbench(): WorkbenchContext {
   const navigationItems = computed(() => {
     const items: WorkbenchContext['navigationItems']['value'] = [
       { key: 'home', label: '工作台', caption: '首页与核心诊疗入口', shortLabel: '工作台', to: '/' },
-      { key: 'upload', label: '影像上传', caption: '新增病例与上传影像', shortLabel: '上传', to: '/upload' },
-      { key: 'diagnosis', label: 'AI 诊断', caption: '查看诊断结果与审核意见', shortLabel: '诊断', to: '/diagnosis' },
-      { key: 'reports', label: '诊断报告', caption: '历史记录与报告导出', shortLabel: '报告', to: '/reports' },
-      { key: 'settings', label: '系统设置', caption: '角色与系统能力入口', shortLabel: '设置', to: '/settings' },
+      { key: 'workspace', label: '影像工作站', caption: '上传、诊断、报告审核一体化', shortLabel: '工作站', to: '/workspace' },
     ]
 
     if (canReadImages.value) {
@@ -129,9 +97,34 @@ export function useWorkbench(): WorkbenchContext {
     if (canViewAuditLogs.value) {
       items.push({ key: 'audit', label: '审计中心', caption: '关键操作留痕日志', shortLabel: '审计', to: '/audit' })
     }
+    items.push({ key: 'settings', label: '系统设置', caption: '角色与系统能力入口', shortLabel: '设置', to: '/settings' })
 
     return items
   })
+
+  const audit = useWorkbenchAudit(canViewAuditLogs)
+  const dashboard = useWorkbenchDashboard(canReadImages)
+  const records = useWorkbenchRecords(canReadImages)
+  const upload = useWorkbenchUpload({
+    canUpload,
+    canReadImages,
+    getAccessToken,
+    fetchRecords: records.fetchRecords,
+    waitForAnalysisCompletion: records.waitForAnalysisCompletion,
+    refreshAuditLogs: audit.refreshAuditLogs,
+    refreshDashboardSummary: dashboard.refreshDashboardSummary,
+  })
+  const reports = useWorkbenchReports({
+    canReview,
+    canFinalize,
+    currentRecord: records.currentRecord,
+    reviewText: records.reviewText,
+    fetchAnalysisRecord: records.fetchAnalysisRecord,
+    fetchRecords: records.fetchRecords,
+    refreshAuditLogs: audit.refreshAuditLogs,
+    refreshDashboardSummary: dashboard.refreshDashboardSummary,
+  })
+
   const dashboardStats = computed(() => [
     {
       label: '可见菜单',
@@ -140,23 +133,23 @@ export function useWorkbench(): WorkbenchContext {
     },
     {
       label: '影像记录',
-      value: records.value.length,
+      value: records.records.value.length,
       description: '当前筛选条件下可查看的病例记录'
     },
     {
       label: '当前病灶数',
-      value: currentRecord.value?.detections.length ?? 0,
+      value: records.currentRecord.value?.detections.length ?? 0,
       description: '当前选中记录中的检测结果数量'
     },
     {
       label: '审计事件',
-      value: auditLogs.value.length,
+      value: audit.auditLogs.value.length,
       description: '最近一次读取到的关键留痕数量'
     }
   ])
   const clinicalInsights = computed(() => {
-    const fallbackDetections = records.value.flatMap((item) => item.detections)
-    if (!dashboardSummary.value) {
+    const fallbackDetections = records.records.value.flatMap((item) => item.detections)
+    if (!dashboard.dashboardSummary.value) {
       const averageConfidence = fallbackDetections.length
         ? Math.round(
             (fallbackDetections.reduce((sum, item) => sum + item.confidence, 0) / fallbackDetections.length) * 100
@@ -165,7 +158,7 @@ export function useWorkbench(): WorkbenchContext {
       return [
         {
           label: '正式报告',
-          value: records.value.filter((item) => item.report.status === 'finalized').length,
+          value: records.records.value.filter((item) => item.report.status === 'finalized').length,
           description: '已由医生确认的报告数量'
         },
         {
@@ -175,7 +168,7 @@ export function useWorkbench(): WorkbenchContext {
         },
         {
           label: '处理中',
-          value: records.value.filter((item) => item.status === 'processing').length,
+          value: records.records.value.filter((item) => item.status === 'processing').length,
           description: '仍在等待 AI 分析完成的影像'
         }
       ]
@@ -184,57 +177,21 @@ export function useWorkbench(): WorkbenchContext {
     return [
       {
         label: '患者档案',
-        value: dashboardSummary.value.total_patients,
-        description: `近 7 天新增 ${dashboardSummary.value.recent_patients} 位患者`
+        value: dashboard.dashboardSummary.value.total_patients,
+        description: `近 7 天新增 ${dashboard.dashboardSummary.value.recent_patients} 位患者`
       },
       {
         label: '公开数据集',
-        value: dashboardSummary.value.dataset_count,
-        description: `开放可访问 ${dashboardSummary.value.open_dataset_count} 个，覆盖 ${dashboardSummary.value.covered_disease_count} 类标签`
+        value: dashboard.dashboardSummary.value.dataset_count,
+        description: `开放可访问 ${dashboard.dashboardSummary.value.open_dataset_count} 个，覆盖 ${dashboard.dashboardSummary.value.covered_disease_count} 类标签`
       },
       {
         label: '处理中',
-        value: dashboardSummary.value.processing_images,
+        value: dashboard.dashboardSummary.value.processing_images,
         description: '仍处于 AI 分析中的影像记录'
       }
     ]
   })
-
-  async function refreshAuditLogs() {
-    if (!canViewAuditLogs.value) {
-      auditLogs.value = []
-      auditPagination.value = { ...auditPagination.value, offset: 0, total: 0 }
-      return
-    }
-    try {
-      const result = await getAuditLogs({
-        limit: auditPagination.value.limit,
-        offset: auditPagination.value.offset,
-        ...auditFilters.value
-      })
-      auditLogs.value = result.items
-      auditPagination.value = result.meta
-    } catch {
-      auditLogs.value = []
-      auditPagination.value = { ...auditPagination.value, total: 0 }
-    }
-  }
-
-  async function refreshDashboardSummary() {
-    if (!canReadImages.value) {
-      dashboardSummary.value = null
-      return
-    }
-    try {
-      dashboardSummary.value = await getDashboardSummary()
-    } catch {
-      dashboardSummary.value = null
-    }
-  }
-
-  function sleep(ms: number) {
-    return new Promise((resolve) => window.setTimeout(resolve, ms))
-  }
 
   function normalizeAccessToken(token: string | undefined | null) {
     return token ?? null
@@ -244,10 +201,10 @@ export function useWorkbench(): WorkbenchContext {
     if (!isAuthenticated.value) {
       authProfile.value = null
       rbacModel.value = null
-      auditLogs.value = []
+      audit.auditLogs.value = []
       displayName.value = ''
       authScopes.value = []
-      dashboardSummary.value = null
+      dashboard.dashboardSummary.value = null
       authReady.value = true
       return
     }
@@ -266,11 +223,11 @@ export function useWorkbench(): WorkbenchContext {
     rbacModel.value = model
     authScopes.value = profile.permissions
     if (profile.menus.some((item: MenuCapability) => item.key === 'audit' && item.visible)) {
-      await refreshAuditLogs()
+      await audit.refreshAuditLogs()
     } else {
-      auditLogs.value = []
+      audit.auditLogs.value = []
     }
-    await refreshDashboardSummary()
+    await dashboard.refreshDashboardSummary()
     authReady.value = true
   }
 
@@ -282,235 +239,17 @@ export function useWorkbench(): WorkbenchContext {
     await signOut(window.location.origin)
   }
 
-  async function fetchRecords() {
-    if (!canReadImages.value) {
-      records.value = []
-      selectedImageId.value = ''
-      reviewText.value = ''
-      recordsPagination.value = { ...recordsPagination.value, offset: 0, total: 0 }
-      return
-    }
-    const result = await listImages(filters.value, {
-      limit: recordsPagination.value.limit,
-      offset: recordsPagination.value.offset
-    })
-    records.value = result.items
-    recordsPagination.value = result.meta
-    if (selectedImageId.value && !records.value.some((item) => item.image_id === selectedImageId.value)) {
-      selectedImageId.value = ''
-      reviewText.value = ''
-    }
-    if (!selectedImageId.value && records.value.length > 0) {
-      selectedImageId.value = records.value[0].image_id
-    }
-  }
-
-  async function fetchAnalysisRecord(imageId: string) {
-    if (!canReadImages.value) {
-      return
-    }
-    const current = await getAnalysis(imageId)
-    const index = records.value.findIndex((item) => item.image_id === imageId)
-    if (index >= 0) {
-      records.value[index] = current
-    } else {
-      records.value.unshift(current)
-    }
-    selectedImageId.value = imageId
-    reviewText.value = current.report.doctor_review ?? ''
-  }
-
-  async function waitForAnalysisCompletion(imageId: string) {
-    if (!canReadImages.value) {
-      return null
-    }
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      const current = await getAnalysis(imageId)
-      const index = records.value.findIndex((item) => item.image_id === imageId)
-      if (index >= 0) {
-        records.value[index] = current
-      } else {
-        records.value.unshift(current)
-      }
-      selectedImageId.value = imageId
-      reviewText.value = current.report.doctor_review ?? ''
-      if (current.status !== 'processing') {
-        return current
-      }
-      await sleep(800)
-    }
-    return null
-  }
-
-  function connectProgress(imageId: string) {
-    socketEvents.value = []
-    getAccessToken(logtoApiResource).then((rawAccessToken) => {
-      const accessToken = normalizeAccessToken(rawAccessToken)
-      if (!accessToken) {
-        socketEvents.value.push('analysis.socket_error / missing_token')
-        return
-      }
-      const socket = createAnalysisSocket(imageId, accessToken)
-      socket.onmessage = (event: MessageEvent<string>) => {
-        const payload = JSON.parse(event.data) as { event: string; status: string }
-        socketEvents.value.push(`${payload.event} / ${payload.status}`)
-      }
-      socket.onerror = () => {
-        socketEvents.value.push('analysis.socket_error / unavailable')
-      }
-    })
-  }
-
-  async function handleUpload(payload: { file: File; patientId: string; patientName?: string; imageType: AnalysisItem['image_type'] }) {
-    if (!canUpload.value) {
-      ElMessage.warning('你当前没有上传影像的权限')
-      return
-    }
-    loading.value = true
-    try {
-      const result = await uploadImage(payload)
-      ElMessage.success('上传成功')
-      connectProgress(result.image_id)
-      const completed = await waitForAnalysisCompletion(result.image_id)
-      if (!completed) {
-        ElMessage.warning('分析仍在处理中，请稍后刷新查看结果')
-      }
-      await fetchRecords()
-      await refreshDashboardSummary()
-      await refreshAuditLogs()
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function applyFilters() {
-    if (!canReadImages.value) {
-      return
-    }
-    recordsPagination.value = { ...recordsPagination.value, offset: 0 }
-    await fetchRecords()
-    if (selectedImageId.value) {
-      await fetchAnalysisRecord(selectedImageId.value)
-    }
-  }
-
-  async function resetFilters() {
-    filters.value = {
-      patient_id: '',
-      image_type: '',
-      report_status: ''
-    }
-    await applyFilters()
-  }
-
-  async function handleRecordsPageChange(page: number) {
-    recordsPagination.value = {
-      ...recordsPagination.value,
-      offset: (page - 1) * recordsPagination.value.limit
-    }
-    await fetchRecords()
-  }
-
-  async function handleRecordsPageSizeChange(pageSize: number) {
-    recordsPagination.value = {
-      ...recordsPagination.value,
-      limit: pageSize,
-      offset: 0
-    }
-    await fetchRecords()
-  }
-
-  async function applyAuditFilters() {
-    auditPagination.value = {
-      ...auditPagination.value,
-      offset: 0
-    }
-    await refreshAuditLogs()
-  }
-
-  async function resetAuditFilters() {
-    auditFilters.value = {
-      action: '',
-      resource_type: '',
-      resource_id: '',
-      actor_sub: ''
-    }
-    await applyAuditFilters()
-  }
-
-  async function handleAuditPageChange(page: number) {
-    auditPagination.value = {
-      ...auditPagination.value,
-      offset: (page - 1) * auditPagination.value.limit
-    }
-    await refreshAuditLogs()
-  }
-
-  async function handleAuditPageSizeChange(pageSize: number) {
-    auditPagination.value = {
-      ...auditPagination.value,
-      limit: pageSize,
-      offset: 0
-    }
-    await refreshAuditLogs()
-  }
-
-  async function handleReviewSubmit() {
-    if (!canReview.value) {
-      ElMessage.warning('你当前没有审核报告的权限')
-      return
-    }
-    if (!currentRecord.value) {
-      ElMessage.warning('请先选择分析记录')
-      return
-    }
-
-    await reviewReport(currentRecord.value.report.report_id, {
-      doctor_review: reviewText.value,
-      modified_findings: currentRecord.value.detections,
-      status: 'doctor_reviewed'
-    })
-    ElMessage.success('审核意见已提交')
-    await fetchAnalysisRecord(currentRecord.value.image_id)
-    await refreshAuditLogs()
-    await refreshDashboardSummary()
-  }
-
-  async function handleFinalizeSubmit() {
-    if (!canFinalize.value) {
-      ElMessage.warning('你当前没有正式确认报告的权限')
-      return
-    }
-    if (!currentRecord.value) {
-      ElMessage.warning('请先选择分析记录')
-      return
-    }
-
-    await reviewReport(currentRecord.value.report.report_id, {
-      doctor_review: reviewText.value,
-      modified_findings: currentRecord.value.detections,
-      status: 'finalized'
-    })
-    ElMessage.success('报告已正式确认')
-    await fetchAnalysisRecord(currentRecord.value.image_id)
-    await fetchRecords()
-    await refreshAuditLogs()
-    await refreshDashboardSummary()
-  }
-
   watch(isAuthenticated, async () => {
     await refreshAuthState()
     if (!isAuthenticated.value) {
-      records.value = []
-      selectedImageId.value = ''
-      reviewText.value = ''
-      dashboardSummary.value = null
+      records.clearRecords()
+      dashboard.dashboardSummary.value = null
       return
     }
-    await fetchRecords()
-    await refreshDashboardSummary()
-    if (selectedImageId.value) {
-      await fetchAnalysisRecord(selectedImageId.value)
+    await records.fetchRecords()
+    await dashboard.refreshDashboardSummary()
+    if (records.selectedImageId.value) {
+      await records.fetchAnalysisRecord(records.selectedImageId.value)
     }
   })
 
@@ -523,34 +262,34 @@ export function useWorkbench(): WorkbenchContext {
     })
     await refreshAuthState()
     if (isAuthenticated.value) {
-      await fetchRecords()
-      await refreshDashboardSummary()
-      if (selectedImageId.value) {
-        await fetchAnalysisRecord(selectedImageId.value)
+      await records.fetchRecords()
+      await dashboard.refreshDashboardSummary()
+      if (records.selectedImageId.value) {
+        await records.fetchAnalysisRecord(records.selectedImageId.value)
       }
     }
   })
 
   return {
-    loading,
-    records,
-    selectedImageId,
-    reviewText,
-    socketEvents,
+    loading: upload.loading,
+    records: records.records,
+    selectedImageId: records.selectedImageId,
+    reviewText: records.reviewText,
+    socketEvents: upload.socketEvents,
     authReady,
     displayName,
     authProfile,
     rbacModel,
-    auditLogs,
-    auditFilters,
-    auditPagination,
+    auditLogs: audit.auditLogs,
+    auditFilters: audit.auditFilters,
+    auditPagination: audit.auditPagination,
     authScopes,
-    dashboardSummary,
-    filters,
-    recordsPagination,
+    dashboardSummary: dashboard.dashboardSummary,
+    filters: records.filters,
+    recordsPagination: records.recordsPagination,
     isAuthenticated,
     isLoading,
-    currentRecord,
+    currentRecord: records.currentRecord,
     visibleMenus,
     currentRoles,
     tokenRoleLabels,
@@ -575,20 +314,20 @@ export function useWorkbench(): WorkbenchContext {
     clinicalInsights,
     beginSignIn,
     beginSignOut,
-    fetchRecords,
-    fetchAnalysisRecord,
-    handleUpload,
-    applyFilters,
-    resetFilters,
-    handleRecordsPageChange,
-    handleRecordsPageSizeChange,
-    handleReviewSubmit,
-    handleFinalizeSubmit,
-    refreshAuditLogs,
-    applyAuditFilters,
-    resetAuditFilters,
-    handleAuditPageChange,
-    handleAuditPageSizeChange,
-    refreshDashboardSummary
+    fetchRecords: records.fetchRecords,
+    fetchAnalysisRecord: records.fetchAnalysisRecord,
+    handleUpload: upload.handleUpload,
+    applyFilters: records.applyFilters,
+    resetFilters: records.resetFilters,
+    handleRecordsPageChange: records.handleRecordsPageChange,
+    handleRecordsPageSizeChange: records.handleRecordsPageSizeChange,
+    handleReviewSubmit: reports.handleReviewSubmit,
+    handleFinalizeSubmit: reports.handleFinalizeSubmit,
+    refreshAuditLogs: audit.refreshAuditLogs,
+    applyAuditFilters: audit.applyAuditFilters,
+    resetAuditFilters: audit.resetAuditFilters,
+    handleAuditPageChange: audit.handleAuditPageChange,
+    handleAuditPageSizeChange: audit.handleAuditPageSizeChange,
+    refreshDashboardSummary: dashboard.refreshDashboardSummary
   }
 }

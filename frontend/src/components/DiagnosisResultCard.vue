@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { fetchProtectedBlobUrl } from '../api/http'
 import type { AnalysisItem } from '../types/analysis'
@@ -9,6 +9,11 @@ const props = defineProps<{
 }>()
 
 const previewUrl = ref('')
+const imageRef = ref<HTMLImageElement | null>(null)
+const previewShellRef = ref<HTMLElement | null>(null)
+const previewSize = ref({ width: 0, height: 0 })
+const naturalSize = ref({ width: 0, height: 0 })
+let resizeObserver: ResizeObserver | null = null
 
 const averageConfidence = computed(() => {
   const detections = props.currentRecord?.detections ?? []
@@ -55,6 +60,77 @@ const recommendation = computed(() => {
   return '建议常规复查并进行口腔卫生管理。'
 })
 
+const detectionBoxes = computed(() => {
+  const record = props.currentRecord
+  const naturalWidth = naturalSize.value.width
+  const naturalHeight = naturalSize.value.height
+  const shellWidth = previewSize.value.width
+  const shellHeight = previewSize.value.height
+
+  if (!record || !naturalWidth || !naturalHeight || !shellWidth || !shellHeight) {
+    return []
+  }
+
+  const scale = Math.min(shellWidth / naturalWidth, shellHeight / naturalHeight)
+  const displayWidth = naturalWidth * scale
+  const displayHeight = naturalHeight * scale
+  const offsetX = (shellWidth - displayWidth) / 2
+  const offsetY = (shellHeight - displayHeight) / 2
+
+  return record.detections
+    .map((item, index) => {
+      const [rawX1 = 0, rawY1 = 0, rawX2 = 0, rawY2 = 0] = item.bbox
+      const normalized = [rawX1, rawY1, rawX2, rawY2].every((value) => value >= 0 && value <= 1)
+      const x1 = normalized ? rawX1 * naturalWidth : rawX1
+      const y1 = normalized ? rawY1 * naturalHeight : rawY1
+      const x2 = normalized ? rawX2 * naturalWidth : rawX2
+      const y2 = normalized ? rawY2 * naturalHeight : rawY2
+      const left = offsetX + Math.max(0, Math.min(x1, x2)) * scale
+      const top = offsetY + Math.max(0, Math.min(y1, y2)) * scale
+      const width = Math.max(24, Math.abs(x2 - x1) * scale)
+      const height = Math.max(24, Math.abs(y2 - y1) * scale)
+      const severity = item.severity.toLowerCase()
+
+      return {
+        key: `${item.tooth_id}-${item.class}-${index}`,
+        label: `${item.tooth_id} ${item.class} ${Math.round(item.confidence * 100)}%`,
+        className: {
+          'is-high-risk': severity.includes('重') || severity.includes('high'),
+          'is-medium-risk': severity.includes('中') || severity.includes('medium'),
+          'is-low-risk': severity.includes('低') || severity.includes('low'),
+        },
+        style: {
+          left: `${left}px`,
+          top: `${top}px`,
+          width: `${width}px`,
+          height: `${height}px`,
+        },
+      }
+    })
+    .filter((item) => Number.parseFloat(item.style.width) > 0 && Number.parseFloat(item.style.height) > 0)
+})
+
+function updatePreviewSize() {
+  if (!previewShellRef.value) {
+    previewSize.value = { width: 0, height: 0 }
+    return
+  }
+  const rect = previewShellRef.value.getBoundingClientRect()
+  previewSize.value = { width: rect.width, height: rect.height }
+}
+
+function handleImageLoad() {
+  if (!imageRef.value) {
+    naturalSize.value = { width: 0, height: 0 }
+    return
+  }
+  naturalSize.value = {
+    width: imageRef.value.naturalWidth,
+    height: imageRef.value.naturalHeight,
+  }
+  updatePreviewSize()
+}
+
 function resetPreviewUrl() {
   if (previewUrl.value.startsWith('blob:')) {
     URL.revokeObjectURL(previewUrl.value)
@@ -72,6 +148,7 @@ watch(
     try {
       previewUrl.value = await fetchProtectedBlobUrl(imageUrl)
       await nextTick()
+      updatePreviewSize()
     } catch {
       previewUrl.value = ''
     }
@@ -79,7 +156,16 @@ watch(
   { immediate: true },
 )
 
+onMounted(() => {
+  resizeObserver = new ResizeObserver(updatePreviewSize)
+  if (previewShellRef.value) {
+    resizeObserver.observe(previewShellRef.value)
+  }
+  updatePreviewSize()
+})
+
 onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
   resetPreviewUrl()
 })
 </script>
@@ -106,9 +192,27 @@ onBeforeUnmount(() => {
       <div class="diagnosis-result-layout">
         <div class="diagnosis-preview">
           <div class="diagnosis-preview-title">影像预览</div>
-          <div class="image-preview-shell">
-            <img v-if="previewUrl" :src="previewUrl" class="image-preview" alt="牙科影像预览" />
-            <el-empty v-else description="暂无可预览影像" />
+          <div ref="previewShellRef" class="image-preview-shell">
+            <img
+              v-if="previewUrl"
+              ref="imageRef"
+              :src="previewUrl"
+              class="image-preview"
+              alt="牙科影像预览"
+              @load="handleImageLoad"
+            />
+            <div v-if="previewUrl && detectionBoxes.length > 0" class="detection-overlay" aria-hidden="true">
+              <div
+                v-for="box in detectionBoxes"
+                :key="box.key"
+                class="detection-box"
+                :class="box.className"
+                :style="box.style"
+              >
+                <span class="detection-box-label">{{ box.label }}</span>
+              </div>
+            </div>
+            <el-empty v-if="!previewUrl" description="暂无可预览影像" />
           </div>
         </div>
 

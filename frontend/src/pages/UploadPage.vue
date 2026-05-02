@@ -34,7 +34,7 @@ onMounted(async () => {
       description="上传牙齿影像后将自动触发 AI 分析，并生成可审核的诊断草稿。"
     >
       <template #actions>
-        <RouterLink v-if="latestRecord" :to="{ path: '/diagnosis', query: { image_id: latestRecord.image_id } }" class="el-button el-button--primary is-plain">
+        <RouterLink v-if="latestRecord" :to="{ path: '/workspace', query: { image_id: latestRecord.image_id } }" class="el-button el-button--primary is-plain">
           <span>查看最新诊断</span>
         </RouterLink>
       </template>
@@ -71,7 +71,7 @@ onMounted(async () => {
             <span>上传时间：{{ new Date(latestRecord.created_at).toLocaleString() }}</span>
             <span>诊断状态：{{ latestRecord.report.status }}</span>
           </div>
-          <RouterLink :to="{ path: '/diagnosis', query: { image_id: latestRecord.image_id } }" class="el-button el-button--primary">
+          <RouterLink :to="{ path: '/workspace', query: { image_id: latestRecord.image_id } }" class="el-button el-button--primary">
             <span>进入 AI 诊断</span>
           </RouterLink>
         </div>

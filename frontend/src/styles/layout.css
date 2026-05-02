@@ -71,6 +71,25 @@
   min-width: 0;
 }
 
+.global-search-option {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.global-search-option strong {
+  color: var(--medical-ink);
+  font-size: 13px;
+}
+
+.global-search-option span {
+  overflow: hidden;
+  color: var(--medical-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .app-header-bell {
   display: inline-flex;
 }

@@ -1,3 +1,76 @@
+.workspace-page {
+  min-width: 0;
+}
+
+.workspace-header-stats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.workspace-header-stats span {
+  border: 1px solid rgba(8, 145, 178, 0.18);
+  border-radius: 999px;
+  background: var(--medical-primary-soft);
+  color: var(--medical-primary-dark);
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.workspace-mobile-switch {
+  display: none;
+}
+
+.workspace-case-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(8, 145, 178, 0.18);
+  border-radius: var(--medical-radius-lg);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(34, 211, 238, 0.15), transparent 28%),
+    var(--medical-surface);
+  padding: 14px 16px;
+}
+
+.workspace-case-status strong {
+  color: var(--medical-ink);
+}
+
+.workspace-case-status p {
+  margin-top: 4px;
+  color: var(--medical-muted);
+  line-height: 1.55;
+}
+
+.workspace-shell {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(340px, 0.78fr) minmax(0, 1.22fr);
+  align-items: start;
+}
+
+.workspace-rail,
+.workspace-review {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.workspace-review {
+  position: sticky;
+  top: 14px;
+}
+
+.workspace-pane {
+  min-width: 0;
+}
+
 .upload-page-grid {
   display: grid;
   gap: 14px;
@@ -479,6 +552,35 @@
   gap: 12px;
 }
 
+.local-dataset-presets {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 10px;
+}
+
+.local-dataset-presets button {
+  min-width: 0;
+  border: 1px solid rgba(8, 145, 178, 0.18);
+  border-radius: var(--medical-radius-md);
+  background: var(--medical-primary-soft);
+  color: var(--medical-primary-dark);
+  text-align: left;
+  padding: 10px;
+}
+
+.local-dataset-presets strong,
+.local-dataset-presets span {
+  display: block;
+}
+
+.local-dataset-presets span {
+  margin-top: 4px;
+  color: var(--medical-muted);
+  font-size: 12px;
+  word-break: break-all;
+}
+
 @media (max-width: 1280px) {
   .settings-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -487,6 +589,7 @@
 
 @media (max-width: 1100px) {
   .upload-page-grid,
+  .workspace-shell,
   .diagnosis-page-grid,
   .patient-workspace-grid,
   .grid-layout,
@@ -504,9 +607,66 @@
   .audit-filter-form {
     grid-template-columns: 1fr;
   }
+
+  .local-dataset-presets {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-review {
+    position: static;
+  }
 }
 
 @media (max-width: 720px) {
+  .workspace-mobile-switch {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: grid;
+    gap: 6px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border: 1px solid var(--medical-border);
+    border-radius: var(--medical-radius-lg);
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(12px);
+    padding: 6px;
+  }
+
+  .workspace-mobile-switch button {
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--medical-muted);
+    padding: 8px 4px;
+    font-weight: 800;
+  }
+
+  .workspace-mobile-switch button.active {
+    background: var(--medical-primary-soft);
+    color: var(--medical-primary-dark);
+  }
+
+  .workspace-case-status {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .workspace-pane {
+    display: none;
+  }
+
+  .workspace-pane.active {
+    display: block;
+  }
+
+  .workspace-empty-case {
+    display: grid;
+  }
+
+  .workspace-header-stats {
+    justify-content: flex-start;
+  }
+
   .patient-note-box {
     grid-template-columns: 1fr;
   }

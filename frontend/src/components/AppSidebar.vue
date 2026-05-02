@@ -9,7 +9,6 @@ import {
   HomeFilled,
   Operation,
   Setting,
-  UploadFilled,
   User,
 } from '@element-plus/icons-vue'
 
@@ -43,39 +42,18 @@ const primaryItems = computed<SidebarItem[]>(() => [
     visible: true,
   },
   {
+    key: 'workspace',
+    label: '影像工作站',
+    to: '/workspace',
+    icon: DataAnalysis,
+    visible: workbench.canUpload.value || workbench.canReadImages.value,
+  },
+  {
     key: 'patients',
     label: '患者管理',
     to: '/patients',
     icon: User,
     visible: workbench.canReadImages.value,
-  },
-  {
-    key: 'upload',
-    label: '影像上传',
-    to: '/upload',
-    icon: UploadFilled,
-    visible: workbench.canUpload.value || workbench.canReadImages.value,
-  },
-  {
-    key: 'diagnosis',
-    label: 'AI 诊断',
-    to: '/diagnosis',
-    icon: DataAnalysis,
-    visible: workbench.canReadImages.value,
-  },
-  {
-    key: 'reports',
-    label: '诊断报告',
-    to: '/reports',
-    icon: Document,
-    visible: workbench.canReadImages.value,
-  },
-  {
-    key: 'settings',
-    label: '系统设置',
-    to: '/settings',
-    icon: Setting,
-    visible: true,
   },
 ])
 
@@ -101,9 +79,19 @@ const utilityItems = computed<SidebarItem[]>(() => [
     icon: Document,
     visible: workbench.canViewAuditLogs.value,
   },
+  {
+    key: 'settings',
+    label: '系统设置',
+    to: '/settings',
+    icon: Setting,
+    visible: true,
+  },
 ])
 
 function isActive(path: string) {
+  if (path === '/workspace' && ['/workspace', '/upload', '/diagnosis', '/reports'].includes(route.path)) {
+    return true
+  }
   return route.path === path
 }
 </script>

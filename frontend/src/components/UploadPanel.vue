@@ -77,6 +77,12 @@ function handleFileChange(file: UploadUserFile) {
 }
 
 function handleSubmit() {
+  form.patientId = form.patientId.trim()
+  form.patientName = form.patientName.trim()
+  if (!form.patientId) {
+    ElMessage.warning('请填写患者编号')
+    return
+  }
   if (!uploadFile.value) {
     ElMessage.warning('请先选择影像文件')
     return
@@ -111,6 +117,12 @@ onBeforeUnmount(() => {
     </template>
 
     <el-form label-position="top" class="upload-form-v2">
+      <div class="upload-status-strip">
+        <span :class="{ active: Boolean(uploadFile) }">1 选择影像</span>
+        <span :class="{ active: Boolean(form.patientId.trim()) }">2 绑定患者</span>
+        <span :class="{ active: loading }">3 AI 分析</span>
+      </div>
+
       <div class="upload-dropzone-v2">
         <div class="upload-dropzone-head">
           <strong>拖拽或选择牙齿影像文件</strong>

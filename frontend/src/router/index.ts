@@ -5,13 +5,11 @@ import AppLayout from '../layouts/AppLayout.vue'
 const AuthCallbackPanel = () => import('../components/AuthCallbackPanel.vue')
 const AccessPage = () => import('../pages/AccessPage.vue')
 const AuditPage = () => import('../pages/AuditPage.vue')
-const DiagnosisPage = () => import('../pages/DiagnosisPage.vue')
 const DatasetPage = () => import('../pages/DatasetPage.vue')
 const HomePage = () => import('../pages/HomePage.vue')
 const PatientPage = () => import('../pages/PatientPage.vue')
-const ReportsPage = () => import('../pages/ReportsPage.vue')
 const SettingsPage = () => import('../pages/SettingsPage.vue')
-const UploadPage = () => import('../pages/UploadPage.vue')
+const WorkspacePage = () => import('../pages/WorkspacePage.vue')
 
 const router = createRouter({
   history: createWebHistory(),
@@ -44,31 +42,28 @@ const router = createRouter({
           },
         },
         {
+          path: 'workspace',
+          name: 'workspace',
+          component: WorkspacePage,
+          meta: {
+            title: '影像工作站',
+            subtitle: '上传、AI 诊断与报告审核',
+          },
+        },
+        {
           path: 'upload',
           name: 'upload',
-          component: UploadPage,
-          meta: {
-            title: '影像上传',
-            subtitle: '上传牙齿影像并启动 AI 诊断',
-          },
+          redirect: (to) => ({ path: '/workspace', query: to.query }),
         },
         {
           path: 'diagnosis',
           name: 'diagnosis',
-          component: DiagnosisPage,
-          meta: {
-            title: 'AI 诊断',
-            subtitle: '影像预览与结果复核',
-          },
+          redirect: (to) => ({ path: '/workspace', query: to.query }),
         },
         {
           path: 'reports',
           name: 'reports',
-          component: ReportsPage,
-          meta: {
-            title: '诊断报告',
-            subtitle: '历史报告与导出',
-          },
+          redirect: (to) => ({ path: '/workspace', query: to.query }),
         },
         {
           path: 'settings',

@@ -140,6 +140,11 @@ const datasetPipelineSteps = [
     description: '沉淀 Precision、Recall、mAP、F1 与样本数量，便于医生侧解释模型能力边界。',
   },
 ]
+const localDatasetPresets = [
+  { label: 'YOLO 全景病灶', path: '/datasets/panoramic_disease', count: 27864, format: 'YOLO' },
+  { label: 'Dental X-Ray', path: '/datasets/dental_xray', count: 1075, format: 'YOLO/TXT' },
+  { label: '基础样本集', path: '/datasets/x', count: 1601, format: 'YOLO' },
+]
 
 function resetForm() {
   form.name = ''
@@ -330,6 +335,13 @@ function openImportDialog() {
   importForm.notes = ''
   zipFile.value = null
   importDialogVisible.value = true
+}
+
+function applyLocalPreset(preset: { path: string; count: number; format: string }) {
+  importForm.import_method = 'local_directory'
+  importForm.source_path = preset.path
+  importForm.sample_count = preset.count
+  importForm.annotation_format = preset.format
 }
 
 function openEvaluationDialog() {
@@ -640,7 +652,12 @@ onMounted(async () => {
             <el-empty v-else-if="imports.length === 0" description="暂无导入批次，可登记本地目录、手动统计或上传 zip" />
             <el-table v-else :data="imports" stripe>
               <el-table-column prop="import_method" label="方式" min-width="120" />
-              <el-table-column prop="sample_count" label="样本" min-width="80" />
+              <el-table-column label="样本" min-width="100">
+                <template #default="scope">
+                  <el-tag v-if="scope.row.sample_count === 0" type="warning">待重新索引</el-tag>
+                  <span v-else>{{ scope.row.sample_count }}</span>
+                </template>
+              </el-table-column>
               <el-table-column prop="status" label="状态" min-width="100" />
               <el-table-column prop="annotation_format" label="标注格式" min-width="120" />
               <el-table-column label="操作" width="240">
@@ -842,6 +859,17 @@ onMounted(async () => {
           </el-select>
         </el-form-item>
         <el-form-item v-if="importForm.import_method !== 'manual_summary'" label="来源路径 / 说明">
+          <div v-if="importForm.import_method === 'local_directory'" class="local-dataset-presets">
+            <button
+              v-for="preset in localDatasetPresets"
+              :key="preset.path"
+              type="button"
+              @click="applyLocalPreset(preset)"
+            >
+              <strong>{{ preset.label }}</strong>
+              <span>{{ preset.path }}</span>
+            </button>
+          </div>
           <el-input
             v-model="importForm.source_path"
             :placeholder="importForm.import_method === 'url_download' ? 'https://example.com/dataset.zip' : 'Docker 中建议填写 /datasets/x 或 /datasets/dental_xray'"

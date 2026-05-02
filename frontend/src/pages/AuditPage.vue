@@ -88,7 +88,14 @@ onMounted(async () => {
           </div>
         </template>
 
-        <el-empty v-if="latestAuditLogs.length === 0" description="暂无审计日志" />
+        <div v-if="latestAuditLogs.length === 0" class="empty-action-card">
+          <strong>暂无审计日志</strong>
+          <p>上传影像、审核报告或初始化数据集后，这里会显示关键操作留痕。</p>
+          <div class="quick-action-row">
+            <el-button @click="resetAuditFilters">清空筛选</el-button>
+            <RouterLink to="/workspace" class="el-button el-button--primary"><span>进入工作站</span></RouterLink>
+          </div>
+        </div>
         <div v-else class="audit-timeline">
           <div v-for="log in latestAuditLogs" :key="log.audit_log_id" class="audit-card">
             <div class="audit-card-header">

@@ -60,7 +60,7 @@ onMounted(async () => {
       description="智齿 AI 将辅助你完成影像上传、诊断复核与报告管理。"
     >
       <template #actions>
-        <RouterLink to="/upload" class="el-button el-button--primary"><span>快速上传影像</span></RouterLink>
+        <RouterLink to="/workspace" class="el-button el-button--primary"><span>快速上传影像</span></RouterLink>
       </template>
     </PageHeader>
 
@@ -86,11 +86,15 @@ onMounted(async () => {
       <template #header>
         <div class="panel-header">
           <span>最近诊断记录</span>
-          <RouterLink to="/reports" class="el-button is-text"><span>查看全部</span></RouterLink>
+          <RouterLink to="/workspace" class="el-button is-text"><span>查看全部</span></RouterLink>
         </div>
       </template>
 
-      <el-empty v-if="latestRecords.length === 0" description="暂无诊断记录" />
+      <div v-if="latestRecords.length === 0" class="empty-action-card">
+        <strong>还没有诊断记录</strong>
+        <p>先上传一张牙科影像，系统会自动完成 AI 分析并生成报告草稿。</p>
+        <RouterLink to="/workspace" class="el-button el-button--primary"><span>上传影像</span></RouterLink>
+      </div>
       <el-table v-else :data="latestRecords" stripe>
         <el-table-column label="患者姓名" min-width="140">
           <template #default="scope">
@@ -114,7 +118,7 @@ onMounted(async () => {
         </el-table-column>
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="scope">
-            <RouterLink :to="{ path: '/diagnosis', query: { image_id: scope.row.image_id } }" class="el-button is-text">
+            <RouterLink :to="{ path: '/workspace', query: { image_id: scope.row.image_id } }" class="el-button is-text">
               <span>查看诊断</span>
             </RouterLink>
           </template>

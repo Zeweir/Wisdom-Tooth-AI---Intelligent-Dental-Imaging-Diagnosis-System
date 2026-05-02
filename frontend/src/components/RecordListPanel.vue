@@ -101,7 +101,14 @@ function getQueueHint(record: AnalysisItem) {
       </el-form>
     </details>
 
-    <el-empty v-if="props.records.length === 0" description="暂无记录，请先上传影像" />
+    <div v-if="props.records.length === 0" class="empty-action-card">
+      <strong>暂无匹配病例</strong>
+      <p>可以清空筛选条件，或上传新的牙科影像启动 AI 诊断。</p>
+      <div class="quick-action-row">
+        <el-button @click="emit('resetFilters')">清空筛选</el-button>
+        <RouterLink to="/workspace" class="el-button el-button--primary"><span>上传影像</span></RouterLink>
+      </div>
+    </div>
     <div v-else class="record-list">
       <button
         v-for="record in sortedRecords"

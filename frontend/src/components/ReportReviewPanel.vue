@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import ReportRevisionDrawer from './ReportRevisionDrawer.vue'
 import type { AnalysisItem } from '../types/analysis'
 import { getReportStatusLabel, getReportStatusTagType } from '../utils/display'
+import { downloadClinicalReport, printClinicalReport } from '../utils/report'
 
 const props = defineProps<{
   currentRecord: AnalysisItem | null
@@ -47,85 +48,18 @@ const emit = defineEmits<{
   finalize: []
 }>()
 
-function buildReportHtml() {
-  if (!props.currentRecord) {
-    return ''
-  }
-  const escapeHtml = (value: string) =>
-    value
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;')
-  const detections = props.currentRecord.detections
-    .map(
-      (item) =>
-        `<tr><td>${escapeHtml(item.tooth_id)}</td><td>${escapeHtml(item.class)}</td><td>${escapeHtml(item.severity)}</td><td>${Math.round(item.confidence * 100)}%</td></tr>`
-    )
-    .join('')
-  return `<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <title>智齿 AI 诊断报告 - ${escapeHtml(props.currentRecord.patient_id)}</title>
-  <style>
-    body { font-family: "Noto Sans SC", sans-serif; color: #083344; margin: 40px; line-height: 1.7; }
-    h1 { color: #0e7490; }
-    table { width: 100%; border-collapse: collapse; margin: 18px 0; }
-    th, td { border: 1px solid #bae6fd; padding: 10px; text-align: left; }
-    th { background: #ecfeff; }
-    .section { margin-top: 24px; }
-  </style>
-</head>
-<body>
-  <h1>智齿 AI 口腔影像辅助诊断报告</h1>
-  <p><strong>患者编号：</strong>${escapeHtml(props.currentRecord.patient_id)}</p>
-  <p><strong>影像文件：</strong>${escapeHtml(props.currentRecord.filename)}</p>
-  <p><strong>报告状态：</strong>${escapeHtml(currentStatusLabel.value)}</p>
-  <div class="section">
-    <h2>AI 初步诊断意见</h2>
-    <p>${escapeHtml(props.currentRecord.report.content)}</p>
-  </div>
-  <div class="section">
-    <h2>检测结果</h2>
-    <table><thead><tr><th>牙位</th><th>类别</th><th>严重程度</th><th>置信度</th></tr></thead><tbody>${detections}</tbody></table>
-  </div>
-  <div class="section">
-    <h2>医生审核意见</h2>
-    <p>${escapeHtml(reviewText.value || props.currentRecord.report.doctor_review || '暂无')}</p>
-  </div>
-</body>
-</html>`
-}
-
 function handlePrintReport() {
-  const html = buildReportHtml()
-  if (!html) {
+  if (!props.currentRecord) {
     return
   }
-  const printWindow = window.open('', '_blank')
-  if (!printWindow) {
-    return
-  }
-  printWindow.document.write(html)
-  printWindow.document.close()
-  printWindow.focus()
-  printWindow.print()
+  printClinicalReport(props.currentRecord, reviewText.value)
 }
 
 function handleExportHtml() {
   if (!props.currentRecord) {
     return
   }
-  const html = buildReportHtml()
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `wisdom-tooth-report-${props.currentRecord.patient_id}.html`
-  link.click()
-  URL.revokeObjectURL(url)
+  downloadClinicalReport(props.currentRecord, reviewText.value)
 }
 </script>
 

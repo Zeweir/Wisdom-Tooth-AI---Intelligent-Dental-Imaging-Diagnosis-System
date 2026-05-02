@@ -1,15 +1,15 @@
 :root {
-  --medical-primary: #2563eb;
-  --medical-primary-dark: #1d4ed8;
-  --medical-primary-soft: #e8f0ff;
-  --medical-accent: #14b8a6;
-  --medical-accent-soft: #ecfdf8;
+  --medical-primary: #0891b2;
+  --medical-primary-dark: #164e63;
+  --medical-primary-soft: #ecfeff;
+  --medical-accent: #059669;
+  --medical-accent-soft: #ecfdf5;
   --medical-danger: #ef4444;
   --medical-warning: #f59e0b;
   --medical-ink: #0f172a;
   --medical-text: #334155;
   --medical-muted: #64748b;
-  --medical-bg: #f6f8fb;
+  --medical-bg: #f0fdfa;
   --medical-bg-soft: #f8fafc;
   --medical-surface: #ffffff;
   --medical-border: #e2e8f0;

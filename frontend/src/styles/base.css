@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
 
 *,
 *::before,
@@ -9,6 +9,7 @@
 html {
   min-width: 320px;
   min-height: 100%;
+  overflow-x: hidden;
   overflow-y: scroll;
   scrollbar-gutter: stable;
 }
@@ -17,16 +18,19 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  overflow-x: hidden;
+  font-family: 'Plus Jakarta Sans', 'Noto Sans SC', sans-serif;
   color: var(--medical-text);
   background:
-    radial-gradient(circle at 6% 0%, rgba(37, 99, 235, 0.08), transparent 30%),
-    radial-gradient(circle at 92% 8%, rgba(20, 184, 166, 0.08), transparent 30%),
+    radial-gradient(circle at 6% 0%, rgba(8, 145, 178, 0.13), transparent 30%),
+    radial-gradient(circle at 92% 8%, rgba(5, 150, 105, 0.12), transparent 30%),
+    linear-gradient(135deg, rgba(236, 254, 255, 0.72), rgba(248, 250, 252, 0.92)),
     var(--medical-bg);
 }
 
 #app {
   min-height: 100vh;
+  max-width: 100vw;
 }
 
 h1,
@@ -53,6 +57,21 @@ textarea {
   font: inherit;
 }
 
+button,
+a,
+summary,
+.el-button,
+.el-dropdown,
+.el-select,
+.el-upload {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 3px solid rgba(8, 145, 178, 0.36);
+  outline-offset: 3px;
+}
+
 .w-full {
   width: 100%;
 }
@@ -76,4 +95,16 @@ textarea {
 body.el-popup-parent--hidden {
   overflow-y: auto !important;
   padding-right: 0 !important;
+}
+
+.el-overlay {
+  overflow: auto;
+}
+
+.el-dialog {
+  margin: 6vh auto 24px !important;
+}
+
+.el-message {
+  max-width: calc(100vw - 24px);
 }

@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { Bell, Search } from '@element-plus/icons-vue'
 import { useRoute } from 'vue-router'
 
+import { useGlobalSearch } from '../composables/useGlobalSearch'
 import { useWorkbenchContext } from '../workbench'
 
 const route = useRoute()
 const workbench = useWorkbenchContext()
-const searchKeyword = ref('')
+const globalSearch = useGlobalSearch()
 
 const pageTitle = computed(() => String(route.meta?.title ?? '工作台'))
 const pageSubtitle = computed(() => String(route.meta?.subtitle ?? '牙齿影像智能诊断系统'))
@@ -29,11 +30,27 @@ async function handleCommand(command: string | number | object) {
     </div>
 
     <div class="app-header-search">
-      <el-input v-model="searchKeyword" placeholder="搜索患者编号、影像编号（预留）" clearable>
+      <el-autocomplete
+        v-model="globalSearch.keyword.value"
+        :fetch-suggestions="globalSearch.fetchSuggestions"
+        :loading="globalSearch.searching.value"
+        placeholder="搜索患者、影像编号或文件名"
+        clearable
+        value-key="value"
+        class="w-full"
+        @select="globalSearch.openOption"
+        @keyup.enter="globalSearch.submitSearch"
+      >
         <template #prefix>
           <el-icon><Search /></el-icon>
         </template>
-      </el-input>
+        <template #default="{ item }">
+          <div class="global-search-option">
+            <strong>{{ item.label }}</strong>
+            <span>{{ item.caption }}</span>
+          </div>
+        </template>
+      </el-autocomplete>
     </div>
 
     <div class="app-header-actions">
