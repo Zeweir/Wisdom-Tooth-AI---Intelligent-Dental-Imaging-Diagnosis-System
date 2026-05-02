@@ -5,7 +5,7 @@ import "element-plus/dist/index.css";
 import App from "./App.vue";
 import { logtoApiResource, logtoAppId, logtoEndpoint } from "./api/http";
 import router from "./router";
-import "./style.css";
+import "./styles/index.css";
 
 createApp(App)
   .use(createLogto, {

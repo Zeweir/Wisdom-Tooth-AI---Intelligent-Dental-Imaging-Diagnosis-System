@@ -1,0 +1,129 @@
+@keyframes route-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes route-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes soft-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.15);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(37, 99, 235, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+  }
+}
+
+.route-fade-enter-active {
+  animation: route-fade-in var(--medical-duration-normal) var(--medical-ease-standard);
+}
+
+.route-fade-leave-active {
+  animation: route-fade-out calc(var(--medical-duration-fast) + 40ms) var(--medical-ease-standard);
+}
+
+.app-sidebar-link,
+.app-sidebar-toggle,
+.record-item,
+.dataset-card,
+.settings-entry-card,
+.panel,
+.el-button,
+.el-tag,
+.el-table__row {
+  transition:
+    transform var(--medical-duration-fast) var(--medical-ease-standard),
+    background-color var(--medical-duration-fast) var(--medical-ease-standard),
+    border-color var(--medical-duration-fast) var(--medical-ease-standard),
+    box-shadow var(--medical-duration-fast) var(--medical-ease-standard),
+    color var(--medical-duration-fast) var(--medical-ease-standard),
+    opacity var(--medical-duration-fast) var(--medical-ease-standard);
+}
+
+.app-sidebar-link:hover {
+  background: var(--medical-bg-soft);
+}
+
+.record-item:hover,
+.dataset-card:hover,
+.settings-entry-card:hover,
+.panel:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--medical-shadow-card);
+}
+
+.el-button:hover {
+  transform: translateY(-1px);
+}
+
+.el-button:active {
+  transform: translateY(0);
+}
+
+.app-layout-breadcrumb {
+  transition: opacity var(--medical-duration-fast) var(--medical-ease-standard);
+}
+
+.upload-panel-v2 .el-upload-dragger {
+  transition:
+    border-color var(--medical-duration-fast) var(--medical-ease-standard),
+    background-color var(--medical-duration-fast) var(--medical-ease-standard);
+}
+
+.upload-panel-v2 .el-upload-dragger:hover {
+  border-color: #93c5fd;
+  background: #f0f7ff;
+}
+
+.record-list > *,
+.dataset-card-grid > *,
+.settings-grid > *,
+.audit-timeline > * {
+  animation: route-fade-in 380ms var(--medical-ease-standard) both;
+}
+
+.record-list > *:nth-child(2),
+.dataset-card-grid > *:nth-child(2),
+.settings-grid > *:nth-child(2),
+.audit-timeline > *:nth-child(2) {
+  animation-delay: 40ms;
+}
+
+.record-list > *:nth-child(3),
+.dataset-card-grid > *:nth-child(3),
+.settings-grid > *:nth-child(3),
+.audit-timeline > *:nth-child(3) {
+  animation-delay: 80ms;
+}
+
+.record-item.is-processing {
+  animation: soft-pulse 2.4s var(--medical-ease-standard) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

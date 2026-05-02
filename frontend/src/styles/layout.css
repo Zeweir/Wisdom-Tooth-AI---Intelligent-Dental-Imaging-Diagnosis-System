@@ -1,0 +1,216 @@
+.app-layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  transition: grid-template-columns var(--medical-duration-normal) var(--medical-ease-standard);
+}
+
+.app-layout.is-collapsed {
+  grid-template-columns: 64px minmax(0, 1fr);
+}
+
+.app-layout-sidebar {
+  border-right: 1px solid var(--medical-border);
+  background: var(--medical-surface);
+}
+
+.app-layout-main {
+  min-width: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-layout-breadcrumb {
+  padding: 14px 18px 10px;
+  color: var(--medical-muted);
+}
+
+.app-layout-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 18px 18px;
+}
+
+.app-layout-footer {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 12px;
+  padding: 8px 14px 16px;
+}
+
+.app-header {
+  height: 60px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(240px, 360px) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--medical-border);
+  background: var(--medical-surface);
+}
+
+.app-header-title h1 {
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.app-header-title p {
+  margin-top: 2px;
+  color: var(--medical-muted);
+  font-size: 12px;
+}
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-header-search {
+  min-width: 0;
+}
+
+.app-header-bell {
+  display: inline-flex;
+}
+
+.app-header-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.app-header-user-meta {
+  display: grid;
+}
+
+.app-header-user-meta strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.app-header-user-meta span {
+  color: var(--medical-muted);
+  font-size: 12px;
+}
+
+.app-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 10px;
+}
+
+.app-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  border-radius: var(--medical-radius-md);
+  padding: 8px;
+}
+
+.app-sidebar-logo {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--medical-radius-sm);
+  color: #fff;
+  background: linear-gradient(135deg, var(--medical-primary), #0ea5e9);
+  font-weight: 900;
+}
+
+.app-sidebar-brand-text {
+  min-width: 0;
+}
+
+.app-sidebar-brand-text strong {
+  display: block;
+  font-size: 15px;
+}
+
+.app-sidebar-brand-text span {
+  display: block;
+  color: var(--medical-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.app-sidebar-nav {
+  display: grid;
+  gap: 6px;
+}
+
+.app-sidebar-nav-sub {
+  margin-top: 2px;
+}
+
+.app-sidebar-link {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: var(--medical-radius-sm);
+  text-decoration: none;
+  color: var(--medical-text);
+}
+
+.app-sidebar-link.active {
+  color: var(--medical-primary);
+  background: var(--medical-primary-soft);
+}
+
+.app-sidebar-section {
+  margin-top: 4px;
+  padding: 0 10px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.app-sidebar-toggle {
+  margin-top: auto;
+  width: 100%;
+  height: 36px;
+  border: 1px solid var(--medical-border);
+  border-radius: var(--medical-radius-sm);
+  background: var(--medical-surface);
+  color: var(--medical-text);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-sidebar-toggle .rotated {
+  transform: rotate(180deg);
+}
+
+@media (max-width: 1024px) {
+  .app-layout,
+  .app-layout.is-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  .app-layout-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--medical-border);
+  }
+
+  .app-sidebar {
+    height: auto;
+    position: relative;
+  }
+
+  .app-header {
+    height: auto;
+    grid-template-columns: 1fr;
+    padding: 10px 14px;
+  }
+}

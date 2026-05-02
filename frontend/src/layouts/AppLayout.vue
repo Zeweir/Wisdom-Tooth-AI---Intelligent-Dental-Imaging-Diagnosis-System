@@ -20,6 +20,14 @@ const breadcrumbItems = computed(() => {
 function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value
 }
+
+const routeTransitionName = computed(() => {
+  const motion = route.meta?.motion
+  if (motion === 'none') {
+    return ''
+  }
+  return 'route-fade'
+})
 </script>
 
 <template>
@@ -44,7 +52,11 @@ function toggleSidebar() {
       </section>
 
       <main class="app-layout-content">
-        <RouterView />
+        <RouterView v-slot="{ Component }">
+          <Transition :name="routeTransitionName" mode="out-in">
+            <component :is="Component" :key="route.fullPath" />
+          </Transition>
+        </RouterView>
       </main>
 
       <footer class="app-layout-footer">

@@ -1,0 +1,519 @@
+.upload-page-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.8fr);
+}
+
+.upload-page-latest {
+  display: grid;
+  gap: 12px;
+}
+
+.upload-actions-v2 {
+  justify-content: flex-start;
+}
+
+.diagnosis-page-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(320px, 0.8fr) minmax(0, 1.2fr);
+  align-items: start;
+}
+
+.diagnosis-page-main {
+  display: grid;
+  gap: 14px;
+}
+
+.diagnosis-preview-title {
+  margin-bottom: 10px;
+  color: var(--medical-ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.patient-workspace-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(300px, 0.72fr) minmax(0, 1.28fr);
+  align-items: start;
+}
+
+.workbench-column {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.patient-search-row {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.patient-list {
+  max-height: min(52vh, 560px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.patient-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.clinical-metric {
+  border: 1px solid var(--medical-border);
+  border-radius: var(--medical-radius-md);
+  background: var(--medical-bg-soft);
+  padding: 14px;
+}
+
+.metric-value {
+  color: var(--medical-ink);
+  font-size: 30px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.metric-label {
+  margin-top: 8px;
+  color: var(--medical-primary);
+  font-weight: 700;
+}
+
+.patient-note-box {
+  display: grid;
+  gap: 10px 14px;
+  grid-template-columns: 112px minmax(0, 1fr);
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--medical-border);
+  border-radius: var(--medical-radius-md);
+  background: var(--medical-bg-soft);
+}
+
+.patient-note-box strong {
+  color: var(--medical-ink);
+}
+
+.patient-note-box span,
+.patient-note-box a {
+  color: var(--medical-muted);
+  word-break: break-word;
+}
+
+.patient-timeline {
+  display: grid;
+  gap: 10px;
+}
+
+.patient-timeline .audit-card {
+  border-left: 4px solid rgba(37, 99, 235, 0.3);
+}
+
+.patient-report-summary strong {
+  font-size: 13px;
+}
+
+.dialog-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.report-preview-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.settings-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.settings-entry-card h3 {
+  margin-bottom: 8px;
+}
+
+.settings-entry-card p {
+  min-height: 40px;
+  margin-bottom: 14px;
+  color: var(--medical-muted);
+}
+
+.medical-page-header {
+  border: 1px solid var(--medical-border);
+  border-radius: var(--medical-radius-lg);
+  background: var(--medical-surface);
+  box-shadow: var(--medical-shadow-soft);
+  padding: 18px;
+}
+
+.medical-page-header h2 {
+  margin-top: 10px;
+  font-size: clamp(22px, 2.8vw, 30px);
+}
+
+.medical-page-header p {
+  margin-top: 8px;
+  color: var(--medical-muted);
+}
+
+.compact-page-header {
+  padding: 16px 18px;
+}
+
+.section-block {
+  display: grid;
+  gap: 14px;
+}
+
+.grid-layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.1fr);
+}
+
+.detail-layout {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.feature-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.feature-card p {
+  color: var(--medical-muted);
+  line-height: 1.65;
+}
+
+.audit-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+}
+
+.audit-card {
+  border: 1px solid var(--medical-border);
+  border-radius: var(--medical-radius-md);
+  background: var(--medical-bg-soft);
+  padding: 12px;
+}
+
+.audit-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.audit-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--medical-radius-sm);
+  display: grid;
+  place-items: center;
+  color: var(--medical-primary);
+  background: var(--medical-primary-soft);
+  font-weight: 900;
+}
+
+.audit-main strong {
+  color: var(--medical-ink);
+}
+
+.audit-time {
+  color: var(--medical-primary);
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.audit-detail {
+  margin-top: 8px;
+  color: var(--medical-muted);
+  font-size: 13px;
+  word-break: break-word;
+}
+
+.audit-timeline {
+  display: grid;
+  gap: 10px;
+}
+
+.audit-filter-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  align-items: end;
+}
+
+.audit-quick-filters {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 10px;
+  border: 1px solid var(--medical-border);
+  border-radius: var(--medical-radius-md);
+  background: var(--medical-bg-soft);
+}
+
+.audit-filter-actions {
+  grid-column: 1 / -1;
+}
+
+.dataset-intro {
+  border-color: #bfdbfe;
+}
+
+.dataset-dashboard-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1.05fr) minmax(330px, 0.95fr);
+}
+
+.dataset-kpi-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dataset-kpi-card {
+  border: 1px solid var(--medical-border);
+  border-radius: var(--medical-radius-lg);
+  background: var(--medical-surface);
+  box-shadow: var(--medical-shadow-soft);
+  padding: 16px;
+}
+
+.dataset-kpi-card strong {
+  display: block;
+  color: var(--medical-ink);
+  font-size: 32px;
+  line-height: 1;
+}
+
+.dataset-kpi-card span {
+  display: block;
+  margin-top: 8px;
+  color: var(--medical-muted);
+  font-size: 13px;
+}
+
+.dataset-focus-panel {
+  border: 1px solid var(--medical-border);
+  border-radius: var(--medical-radius-lg);
+  background:
+    radial-gradient(circle at 92% 0%, rgba(37, 99, 235, 0.12), transparent 34%),
+    linear-gradient(135deg, #f8fbff, #ffffff);
+  padding: 16px;
+}
+
+.dataset-focus-panel h3 {
+  margin: 8px 0;
+  font-size: 24px;
+}
+
+.dataset-focus-panel p {
+  color: var(--medical-muted);
+  line-height: 1.7;
+}
+
+.dataset-focus-metrics {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dataset-focus-metrics div {
+  border: 1px solid var(--medical-border);
+  border-radius: var(--medical-radius-md);
+  background: rgba(255, 255, 255, 0.75);
+  padding: 12px;
+}
+
+.dataset-focus-metrics strong {
+  display: block;
+  color: var(--medical-primary);
+  font-size: 18px;
+}
+
+.dataset-focus-metrics span {
+  color: var(--medical-muted);
+  font-size: 12px;
+}
+
+.dataset-ops-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
+}
+
+.dataset-filter-row {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(160px, 1fr) minmax(160px, 1fr) auto auto;
+  margin-bottom: 16px;
+}
+
+.dataset-card-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dataset-card {
+  border: 1px solid var(--medical-border);
+  border-radius: var(--medical-radius-lg);
+  background: #fff;
+  box-shadow: var(--medical-shadow-soft);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.dataset-card.active {
+  border-color: rgba(37, 99, 235, 0.35);
+}
+
+.dataset-card.active::before {
+  position: absolute;
+  content: '';
+}
+
+.dataset-card strong {
+  color: var(--medical-ink);
+}
+
+.dataset-card p {
+  min-height: 42px;
+  color: var(--medical-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.dataset-primary-meta {
+  margin-top: -2px;
+}
+
+.dataset-tag-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.compact-tag-list {
+  max-height: 62px;
+  overflow: hidden;
+}
+
+.dataset-workbench-panel {
+  border-color: #bfdbfe;
+}
+
+.dataset-status-row {
+  margin-bottom: 14px;
+}
+
+.dataset-tabs .el-tabs__header {
+  margin-bottom: 14px;
+}
+
+.dataset-tab-note {
+  margin-bottom: 12px;
+  border: 1px solid var(--medical-border);
+  border-radius: var(--medical-radius-sm);
+  background: var(--medical-bg-soft);
+  color: var(--medical-muted);
+  font-size: 13px;
+  padding: 10px 12px;
+}
+
+.dataset-pipeline {
+  display: grid;
+  gap: 10px;
+}
+
+.dataset-pipeline-step {
+  border: 1px solid var(--medical-border);
+  border-radius: var(--medical-radius-md);
+  background: var(--medical-bg-soft);
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.dataset-pipeline-step > span {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--medical-radius-sm);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--medical-primary), #0ea5e9);
+  font-weight: 900;
+}
+
+.dataset-pipeline-step strong {
+  color: var(--medical-ink);
+}
+
+.dataset-pipeline-step small {
+  display: block;
+  margin-top: 4px;
+  color: var(--medical-muted);
+  line-height: 1.55;
+}
+
+.dataset-detail-stack {
+  display: grid;
+  gap: 12px;
+}
+
+@media (max-width: 1280px) {
+  .settings-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .upload-page-grid,
+  .diagnosis-page-grid,
+  .patient-workspace-grid,
+  .grid-layout,
+  .detail-layout,
+  .feature-grid,
+  .audit-grid,
+  .dataset-dashboard-grid,
+  .dataset-ops-grid,
+  .dataset-card-grid,
+  .dataset-filter-row,
+  .settings-grid,
+  .dataset-focus-metrics,
+  .dialog-form-grid,
+  .patient-summary-grid,
+  .audit-filter-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .patient-note-box {
+    grid-template-columns: 1fr;
+  }
+
+  .record-meta,
+  .actions,
+  .pagination-row {
+    justify-content: flex-start;
+  }
+}
