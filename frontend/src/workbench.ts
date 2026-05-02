@@ -6,7 +6,7 @@ import type { AuditLogFilters, AuditLogItem, AuditLogPagination } from './types/
 import type { AuthProfile, MenuCapability, RbacModel } from './types/auth'
 
 export interface NavigationItem {
-  key: 'home' | 'workspace' | 'patients' | 'datasets' | 'system'
+  key: 'home' | 'patients' | 'upload' | 'diagnosis' | 'reports' | 'settings' | 'datasets' | 'access' | 'audit' | 'system'
   label: string
   caption: string
   shortLabel: string

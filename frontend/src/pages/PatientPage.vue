@@ -316,7 +316,7 @@ onMounted(async () => {
               <div class="record-meta">
                 <el-button text @click="openReportPreview(image)">查看报告</el-button>
                 <RouterLink
-                  :to="{ path: '/workspace', query: { image_id: image.image_id } }"
+                  :to="{ path: '/diagnosis', query: { image_id: image.image_id } }"
                   class="el-button el-button--primary is-plain"
                 >
                   <span>打开病例</span>
@@ -418,10 +418,10 @@ onMounted(async () => {
         <div class="quick-action-row">
           <el-button @click="revisionDrawerVisible = true">查看版本历史</el-button>
           <RouterLink
-            :to="{ path: '/workspace', query: { image_id: previewReport.image_id } }"
+            :to="{ path: '/diagnosis', query: { image_id: previewReport.image_id } }"
             class="el-button el-button--primary"
           >
-            <span>到工作站继续处理</span>
+            <span>到诊断页继续处理</span>
           </RouterLink>
         </div>
       </div>

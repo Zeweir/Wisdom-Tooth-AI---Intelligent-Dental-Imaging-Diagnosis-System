@@ -1,14 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import AppShell from '../layouts/AppShell.vue'
+import AppLayout from '../layouts/AppLayout.vue'
 
 const AuthCallbackPanel = () => import('../components/AuthCallbackPanel.vue')
 const AccessPage = () => import('../pages/AccessPage.vue')
 const AuditPage = () => import('../pages/AuditPage.vue')
+const DiagnosisPage = () => import('../pages/DiagnosisPage.vue')
 const DatasetPage = () => import('../pages/DatasetPage.vue')
 const HomePage = () => import('../pages/HomePage.vue')
 const PatientPage = () => import('../pages/PatientPage.vue')
-const WorkspacePage = () => import('../pages/WorkspacePage.vue')
+const ReportsPage = () => import('../pages/ReportsPage.vue')
+const SettingsPage = () => import('../pages/SettingsPage.vue')
+const UploadPage = () => import('../pages/UploadPage.vue')
 
 const router = createRouter({
   history: createWebHistory(),
@@ -20,39 +23,90 @@ const router = createRouter({
     },
     {
       path: '/',
-      component: AppShell,
+      component: AppLayout,
       children: [
         {
           path: '',
           name: 'home',
-          component: HomePage
-        },
-        {
-          path: 'workspace',
-          name: 'workspace',
-          component: WorkspacePage
+          component: HomePage,
+          meta: {
+            title: '工作台',
+            subtitle: '牙齿影像智能诊断系统',
+          },
         },
         {
           path: 'patients',
           name: 'patients',
-          component: PatientPage
+          component: PatientPage,
+          meta: {
+            title: '患者管理',
+            subtitle: '患者档案与历史病例',
+          },
+        },
+        {
+          path: 'upload',
+          name: 'upload',
+          component: UploadPage,
+          meta: {
+            title: '影像上传',
+            subtitle: '上传牙齿影像并启动 AI 诊断',
+          },
+        },
+        {
+          path: 'diagnosis',
+          name: 'diagnosis',
+          component: DiagnosisPage,
+          meta: {
+            title: 'AI 诊断',
+            subtitle: '影像预览与结果复核',
+          },
+        },
+        {
+          path: 'reports',
+          name: 'reports',
+          component: ReportsPage,
+          meta: {
+            title: '诊断报告',
+            subtitle: '历史报告与导出',
+          },
+        },
+        {
+          path: 'settings',
+          name: 'settings',
+          component: SettingsPage,
+          meta: {
+            title: '系统设置',
+            subtitle: '系统能力与更多工具',
+          },
         },
         {
           path: 'datasets',
           name: 'datasets',
-          component: DatasetPage
+          component: DatasetPage,
+          meta: {
+            title: '数据集中心',
+            subtitle: '公开数据与模型评估',
+          },
         },
         {
           path: 'access',
           name: 'access',
-          component: AccessPage
+          component: AccessPage,
+          meta: {
+            title: '权限中心',
+            subtitle: '角色与能力说明',
+          },
         },
         {
           path: 'audit',
           name: 'audit',
-          component: AuditPage
-        }
-      ]
+          component: AuditPage,
+          meta: {
+            title: '审计中心',
+            subtitle: '关键操作留痕追踪',
+          },
+        },
+      ],
     },
     {
       path: '/:pathMatch(.*)*',

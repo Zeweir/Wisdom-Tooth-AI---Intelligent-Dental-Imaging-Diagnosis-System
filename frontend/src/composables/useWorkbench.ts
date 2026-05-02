@@ -88,7 +88,6 @@ export function useWorkbench(): WorkbenchContext {
   const canViewAccessPanel = computed(() => visibleMenus.value.some((item) => item.key === 'access'))
   const canViewAuditLogs = computed(() => visibleMenus.value.some((item) => item.key === 'audit'))
   const hasWorkbenchAccess = computed(() => canUpload.value || canReadImages.value || canReview.value)
-  const canViewSystemPanel = computed(() => canViewAccessPanel.value || canViewAuditLogs.value)
   const configuredRoleClaimNamesText = computed(() => authProfile.value?.configured_role_claim_names.join(', ') || '未配置')
   const roleClaimAlignmentTagType = computed(() => {
     if (authProfile.value?.role_claim_alignment_status === 'aligned') {
@@ -113,16 +112,22 @@ export function useWorkbench(): WorkbenchContext {
   })
   const navigationItems = computed(() => {
     const items: WorkbenchContext['navigationItems']['value'] = [
-      { key: 'home', label: '临床总览', caption: '首页与工作台总览', shortLabel: '首页', to: '/' },
-      { key: 'workspace', label: '影像工作站', caption: '上传、记录、分析与审核', shortLabel: '工作站', to: '/workspace' }
+      { key: 'home', label: '工作台', caption: '首页与核心诊疗入口', shortLabel: '工作台', to: '/' },
+      { key: 'upload', label: '影像上传', caption: '新增病例与上传影像', shortLabel: '上传', to: '/upload' },
+      { key: 'diagnosis', label: 'AI 诊断', caption: '查看诊断结果与审核意见', shortLabel: '诊断', to: '/diagnosis' },
+      { key: 'reports', label: '诊断报告', caption: '历史记录与报告导出', shortLabel: '报告', to: '/reports' },
+      { key: 'settings', label: '系统设置', caption: '角色与系统能力入口', shortLabel: '设置', to: '/settings' },
     ]
 
     if (canReadImages.value) {
-      items.push({ key: 'patients', label: '患者档案', caption: '患者列表、病例统计与历史影像', shortLabel: '患者', to: '/patients' })
+      items.push({ key: 'patients', label: '患者管理', caption: '患者列表、病例统计与历史影像', shortLabel: '患者', to: '/patients' })
       items.push({ key: 'datasets', label: '数据集中心', caption: '公开数据集、许可与适用任务', shortLabel: '数据集', to: '/datasets' })
     }
-    if (canViewSystemPanel.value) {
-      items.push({ key: 'system', label: '系统', caption: '权限配置与审计日志', shortLabel: '系统', to: canViewAccessPanel.value ? '/access' : '/audit' })
+    if (canViewAccessPanel.value) {
+      items.push({ key: 'access', label: '权限中心', caption: '角色配置与访问说明', shortLabel: '权限', to: '/access' })
+    }
+    if (canViewAuditLogs.value) {
+      items.push({ key: 'audit', label: '审计中心', caption: '关键操作留痕日志', shortLabel: '审计', to: '/audit' })
     }
 
     return items

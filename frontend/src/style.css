@@ -1690,3 +1690,500 @@ body.el-popup-parent--hidden {
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== 智齿 AI v2 Layout ===== */
+:root {
+  --medical-primary: #2563eb;
+  --medical-primary-dark: #1d4ed8;
+  --medical-primary-soft: #e8f0ff;
+  --medical-green: #14b8a6;
+  --medical-green-soft: #ecfdf8;
+  --medical-red: #ef4444;
+  --medical-ink: #0f172a;
+  --medical-muted: #475569;
+  --medical-soft: #f8fafc;
+  --medical-border: #e2e8f0;
+  --medical-card: #ffffff;
+  --medical-shadow-soft: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+html,
+body {
+  background: #f6f8fb;
+}
+
+body {
+  color: var(--medical-ink);
+}
+
+.app-layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  background: #f6f8fb;
+}
+
+.app-layout.is-collapsed {
+  grid-template-columns: 64px minmax(0, 1fr);
+}
+
+.app-layout-sidebar {
+  border-right: 1px solid var(--medical-border);
+  background: #fff;
+}
+
+.app-layout-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-layout-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 18px 18px;
+}
+
+.app-layout-breadcrumb {
+  padding: 14px 18px 12px;
+}
+
+.app-layout-footer {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 12px;
+  padding: 10px 16px 16px;
+}
+
+.app-sidebar {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 10px;
+  position: sticky;
+  top: 0;
+}
+
+.app-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+
+.app-sidebar-logo {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  font-weight: 800;
+}
+
+.app-sidebar-brand-text strong {
+  display: block;
+  font-size: 15px;
+}
+
+.app-sidebar-brand-text span {
+  display: block;
+  font-size: 12px;
+  color: var(--medical-muted);
+}
+
+.app-sidebar-nav {
+  display: grid;
+  gap: 6px;
+}
+
+.app-sidebar-link {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 10px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: #334155;
+}
+
+.app-sidebar-link:hover {
+  background: #f8fafc;
+}
+
+.app-sidebar-link.active {
+  background: #eff6ff;
+  color: var(--medical-primary);
+}
+
+.app-sidebar-nav-sub {
+  margin-top: 2px;
+}
+
+.app-sidebar-section {
+  margin-top: 6px;
+  padding: 0 10px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.app-sidebar-toggle {
+  margin-top: auto;
+  width: 100%;
+  border: 1px solid var(--medical-border);
+  background: #fff;
+  border-radius: 10px;
+  height: 36px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  color: #475569;
+}
+
+.app-sidebar-toggle .rotated {
+  transform: rotate(180deg);
+}
+
+.app-header {
+  height: 60px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--medical-border);
+  background: #fff;
+  display: grid;
+  gap: 14px;
+  align-items: center;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 360px) auto;
+}
+
+.app-header-title h1 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.app-header-title p {
+  margin: 2px 0 0;
+  color: var(--medical-muted);
+  font-size: 12px;
+}
+
+.app-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.app-header-user {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.app-header-user-meta {
+  display: grid;
+}
+
+.app-header-user-meta strong {
+  font-size: 13px;
+}
+
+.app-header-user-meta span {
+  font-size: 12px;
+  color: var(--medical-muted);
+}
+
+.page-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.page-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border: 1px solid var(--medical-border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: var(--medical-shadow-soft);
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.page-header p {
+  margin: 8px 0 0;
+  color: var(--medical-muted);
+}
+
+.page-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.home-stats-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.stat-card-v2 {
+  background: var(--medical-card);
+  border: 1px solid var(--medical-border);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: var(--medical-shadow-soft);
+}
+
+.stat-card-value {
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--medical-ink);
+}
+
+.stat-card-label {
+  margin-top: 6px;
+  font-weight: 700;
+  color: #1e40af;
+}
+
+.stat-card-desc {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--medical-muted);
+}
+
+.upload-page-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.8fr);
+}
+
+.upload-form-v2 {
+  display: grid;
+  gap: 4px;
+}
+
+.upload-dropzone-v2 {
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 8px;
+  background: #f8fafc;
+}
+
+.upload-dropzone-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.upload-dragger-v2 {
+  width: 100%;
+}
+
+.upload-meta-v2 {
+  border: 1px solid var(--medical-border);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.upload-meta-grid {
+  display: grid;
+  gap: 8px;
+  color: #334155;
+  font-size: 13px;
+}
+
+.upload-preview-v2 {
+  margin-top: 12px;
+  border: 1px solid var(--medical-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.upload-preview-v2 img {
+  width: 100%;
+  max-height: 240px;
+  object-fit: contain;
+  display: block;
+}
+
+.upload-actions-v2 {
+  justify-content: flex-start;
+}
+
+.upload-page-latest {
+  display: grid;
+  gap: 12px;
+}
+
+.diagnosis-page-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(320px, 0.8fr) minmax(0, 1.2fr);
+  align-items: start;
+}
+
+.diagnosis-page-main {
+  display: grid;
+  gap: 14px;
+}
+
+.diagnosis-result-layout {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.2fr);
+}
+
+.diagnosis-preview-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.diagnosis-summary {
+  display: grid;
+  gap: 12px;
+}
+
+.summary-item {
+  border: 1px solid var(--medical-border);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+}
+
+.summary-item > span {
+  display: block;
+  font-size: 12px;
+  color: var(--medical-muted);
+  margin-bottom: 6px;
+}
+
+.summary-item > strong {
+  color: var(--medical-ink);
+}
+
+.summary-item > p {
+  margin: 0;
+  color: #334155;
+  line-height: 1.65;
+}
+
+.report-preview {
+  display: grid;
+  gap: 12px;
+}
+
+.report-preview-meta {
+  display: grid;
+  gap: 8px;
+  color: #475569;
+  font-size: 13px;
+}
+
+.report-preview-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.settings-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.settings-role-list {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.settings-entry-card h3 {
+  margin: 0 0 8px;
+}
+
+.settings-entry-card p {
+  margin: 0 0 14px;
+  color: var(--medical-muted);
+  min-height: 40px;
+}
+
+.empty-state {
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 22px;
+  text-align: center;
+  background: #fff;
+}
+
+.empty-state p {
+  color: var(--medical-muted);
+}
+
+.el-button {
+  border-radius: 10px;
+}
+
+.el-card.panel {
+  border-radius: 14px;
+  border-color: var(--medical-border);
+}
+
+@media (max-width: 1280px) {
+  .home-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 1024px) {
+  .app-layout,
+  .app-layout.is-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  .app-layout-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--medical-border);
+  }
+
+  .app-sidebar {
+    height: auto;
+    position: relative;
+  }
+
+  .app-header {
+    height: auto;
+    padding: 10px 14px;
+    grid-template-columns: 1fr;
+  }
+
+  .upload-page-grid,
+  .diagnosis-page-grid,
+  .diagnosis-result-layout,
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+}

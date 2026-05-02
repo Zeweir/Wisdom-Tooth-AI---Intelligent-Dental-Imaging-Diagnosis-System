@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { UploadUserFile } from 'element-plus'
 import { listPatients } from '../api/patients'
@@ -26,6 +26,19 @@ const uploadFile = ref<File | null>(null)
 const uploadList = ref<UploadUserFile[]>([])
 const patientOptions = ref<PatientRecord[]>([])
 const patientsLoading = ref(false)
+const previewUrl = ref('')
+
+const fileMeta = computed(() => {
+  if (!uploadFile.value) {
+    return null
+  }
+  return {
+    name: uploadFile.value.name,
+    size: `${(uploadFile.value.size / 1024 / 1024).toFixed(2)} MB`,
+    type: uploadFile.value.type || '未知类型',
+    selectedAt: new Date().toLocaleString(),
+  }
+})
 
 async function searchPatients(keyword = '') {
   if (!props.canUpload) {
@@ -53,6 +66,14 @@ function handlePatientChange(patientId: string) {
 function handleFileChange(file: UploadUserFile) {
   uploadFile.value = file.raw ?? null
   uploadList.value = file ? [file] : []
+  if (previewUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(previewUrl.value)
+  }
+  if (uploadFile.value && uploadFile.value.type.startsWith('image/')) {
+    previewUrl.value = URL.createObjectURL(uploadFile.value)
+  } else {
+    previewUrl.value = ''
+  }
 }
 
 function handleSubmit() {
@@ -72,10 +93,16 @@ function handleSubmit() {
 onMounted(() => {
   void searchPatients()
 })
+
+onBeforeUnmount(() => {
+  if (previewUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(previewUrl.value)
+  }
+})
 </script>
 
 <template>
-  <el-card class="panel" shadow="never">
+  <el-card class="panel upload-panel-v2" shadow="never">
     <template #header>
       <div class="panel-header">
         <span>影像上传</span>
@@ -83,14 +110,27 @@ onMounted(() => {
       </div>
     </template>
 
-    <el-form label-position="top">
-      <div class="upload-dropzone">
-        <div class="panel-header">
-          <span>病例影像接入</span>
+    <el-form label-position="top" class="upload-form-v2">
+      <div class="upload-dropzone-v2">
+        <div class="upload-dropzone-head">
+          <strong>拖拽或选择牙齿影像文件</strong>
           <el-tag type="success">支持 DICOM / PNG / JPG</el-tag>
         </div>
-        <p class="upload-hint">建议上传脱敏后的口腔影像文件，系统会自动进入 AI 分析与报告生成流程。</p>
+        <p class="upload-hint">建议上传脱敏后的口腔影像文件，上传成功后可直接进入 AI 诊断页面。</p>
+        <el-upload
+          drag
+          :auto-upload="false"
+          :limit="1"
+          :on-change="handleFileChange"
+          :file-list="uploadList"
+          :disabled="!props.canUpload"
+          class="upload-dragger-v2"
+        >
+          <el-icon class="el-icon--upload"><i class="el-icon-upload" /></el-icon>
+          <div class="el-upload__text">将文件拖到此处，或 <em>点击上传</em></div>
+        </el-upload>
       </div>
+
       <el-form-item label="患者">
         <el-select
           v-model="form.patientId"
@@ -123,13 +163,21 @@ onMounted(() => {
           <el-option label="CBCT" value="cbct" />
         </el-select>
       </el-form-item>
-      <el-form-item label="影像文件">
-        <el-upload :auto-upload="false" :limit="1" :on-change="handleFileChange" :file-list="uploadList" :disabled="!props.canUpload">
-          <el-button type="primary" plain :disabled="!props.canUpload">选择文件</el-button>
-        </el-upload>
-      </el-form-item>
-      <div class="quick-action-row">
-        <el-button type="primary" :loading="loading" :disabled="!props.canUpload" @click="handleSubmit">上传并分析</el-button>
+
+      <div v-if="fileMeta" class="upload-meta-v2">
+        <div class="upload-meta-grid">
+          <span>文件名：{{ fileMeta.name }}</span>
+          <span>文件大小：{{ fileMeta.size }}</span>
+          <span>文件类型：{{ fileMeta.type }}</span>
+          <span>选择时间：{{ fileMeta.selectedAt }}</span>
+        </div>
+        <div v-if="previewUrl" class="upload-preview-v2">
+          <img :src="previewUrl" alt="影像预览" />
+        </div>
+      </div>
+
+      <div class="quick-action-row upload-actions-v2">
+        <el-button type="primary" :loading="loading" :disabled="!props.canUpload" @click="handleSubmit">开始 AI 诊断</el-button>
         <el-tag v-if="uploadFile" type="info">{{ uploadFile.name }}</el-tag>
       </div>
     </el-form>
