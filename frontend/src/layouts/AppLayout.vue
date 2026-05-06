@@ -8,15 +8,6 @@ import AppSidebar from '../components/AppSidebar.vue'
 const route = useRoute()
 const sidebarCollapsed = ref(false)
 
-const breadcrumbItems = computed(() => {
-  return route.matched
-    .filter((item) => item.meta?.title)
-    .map((item) => ({
-      path: item.path,
-      title: String(item.meta?.title ?? ''),
-    }))
-})
-
 function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value
 }
@@ -38,18 +29,6 @@ const routeTransitionName = computed(() => {
 
     <div class="app-layout-main">
       <AppHeader />
-
-      <section class="app-layout-breadcrumb">
-        <el-breadcrumb separator="/">
-          <el-breadcrumb-item
-            v-for="(item, index) in breadcrumbItems"
-            :key="`${item.path}-${index}`"
-          >
-            <RouterLink v-if="index < breadcrumbItems.length - 1" :to="item.path">{{ item.title }}</RouterLink>
-            <span v-else>{{ item.title }}</span>
-          </el-breadcrumb-item>
-        </el-breadcrumb>
-      </section>
 
       <main class="app-layout-content">
         <RouterView v-slot="{ Component }">

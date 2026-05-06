@@ -78,10 +78,6 @@
   transform: translateY(0);
 }
 
-.app-layout-breadcrumb {
-  transition: opacity var(--medical-duration-fast) var(--medical-ease-standard);
-}
-
 .upload-panel-v2 .el-upload-dragger {
   transition:
     border-color var(--medical-duration-fast) var(--medical-ease-standard),
