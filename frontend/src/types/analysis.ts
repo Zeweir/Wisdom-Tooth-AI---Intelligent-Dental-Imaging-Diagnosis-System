@@ -4,6 +4,14 @@ export interface Detection {
   confidence: number;
   severity: string;
   tooth_id: string;
+  tooth_display_name?: string;
+  tooth_confidence_source?: "model_mapped" | "layout_inferred" | "unknown";
+  finding_label?: string;
+  clinical_meaning?: string;
+  risk_hint?: string;
+  recommendation?: string;
+  evidence_summary?: string;
+  follow_up_exam?: string[];
 }
 
 export type ReportStatus =
@@ -12,11 +20,42 @@ export type ReportStatus =
   | "doctor_reviewed"
   | "finalized";
 
+export interface ToothGroupedFinding {
+  finding_label: string;
+  severity: string;
+  confidence: number;
+  clinical_meaning: string;
+  risk_hint: string;
+  recommendation: string;
+  evidence_summary: string;
+  follow_up_exam: string[];
+}
+
+export interface ToothFindingGroup {
+  tooth_id: string;
+  display_name: string;
+  source: "model_mapped" | "layout_inferred" | "unknown";
+  findings: ToothGroupedFinding[];
+}
+
+export interface StructuredReport {
+  summary: string;
+  key_findings: string[];
+  doctor_notes: string;
+  follow_up_plan: string[];
+  high_priority_findings: string[];
+  tooth_findings: ToothFindingGroup[];
+}
+
 export interface Report {
   report_id: string;
   content: string;
+  structured_content: StructuredReport;
   doctor_review: string | null;
   status: ReportStatus;
+  pdf_url: string | null;
+  pdf_variant: string | null;
+  pdf_generated_at: string | null;
 }
 
 export interface AnalysisItem {
@@ -66,8 +105,12 @@ export interface ReportRevision {
   version_no: number;
   status: ReportStatus;
   content: string;
+  structured_content: StructuredReport;
   doctor_review: string | null;
   detections: Detection[];
+  pdf_url: string | null;
+  pdf_variant: string | null;
+  pdf_generated_at: string | null;
   actor_sub: string;
   actor_roles: string[];
   created_at: string;

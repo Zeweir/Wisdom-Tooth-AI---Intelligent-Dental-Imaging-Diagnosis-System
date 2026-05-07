@@ -59,7 +59,7 @@ function handleExportHtml() {
   if (!props.currentRecord) {
     return
   }
-  downloadClinicalReport(props.currentRecord, reviewText.value)
+  void downloadClinicalReport(props.currentRecord, reviewText.value)
 }
 </script>
 
@@ -93,9 +93,65 @@ function handleExportHtml() {
           <div class="section-heading-tags">
             <el-tag :type="currentStatusTagType">{{ currentStatusLabel }}</el-tag>
             <el-tag type="info">{{ reportTextLength }} 字</el-tag>
+            <el-tag v-if="currentRecord.report.pdf_variant" type="success">{{ currentRecord.report.pdf_variant }}</el-tag>
           </div>
         </div>
-        <p>{{ currentRecord.report.content }}</p>
+        <p>{{ currentRecord.report.structured_content.summary || currentRecord.report.content }}</p>
+      </article>
+
+      <article v-if="currentRecord.report.structured_content.key_findings.length > 0" class="report-box">
+        <div class="panel-header">
+          <span>AI 关键发现</span>
+          <el-tag type="danger">{{ currentRecord.report.structured_content.high_priority_findings.length }} 个高优先关注</el-tag>
+        </div>
+        <div class="report-preview-points">
+          <p v-for="item in currentRecord.report.structured_content.key_findings" :key="item" class="clinical-copy">{{ item }}</p>
+        </div>
+      </article>
+
+      <article v-if="currentRecord.report.structured_content.follow_up_plan.length > 0" class="report-box">
+        <div class="panel-header">
+          <span>建议处理方案</span>
+          <el-tag type="info">{{ currentRecord.report.structured_content.follow_up_plan.length }} 条</el-tag>
+        </div>
+        <div class="report-preview-points">
+          <p v-for="item in currentRecord.report.structured_content.follow_up_plan" :key="item" class="clinical-copy">{{ item }}</p>
+        </div>
+      </article>
+
+      <article v-if="currentRecord.report.structured_content.tooth_findings.length > 0" class="report-box">
+        <div class="panel-header">
+          <span>按牙位问题说明</span>
+          <el-tag type="info">{{ currentRecord.report.structured_content.tooth_findings.length }} 个牙位</el-tag>
+        </div>
+        <div class="report-preview-points">
+          <div
+            v-for="group in currentRecord.report.structured_content.tooth_findings"
+            :key="`${group.display_name}-${group.source}`"
+            class="report-tooth-group"
+          >
+            <div class="panel-header">
+              <strong>{{ group.display_name }}</strong>
+              <el-tag :type="group.source === 'layout_inferred' ? 'warning' : group.source === 'unknown' ? 'info' : 'success'">
+                {{ group.source === 'layout_inferred' ? '推测牙位' : group.source === 'unknown' ? '局部区域' : '模型牙位' }}
+              </el-tag>
+            </div>
+            <p
+              v-for="item in group.findings"
+              :key="`${group.display_name}-${item.finding_label}-${item.confidence}`"
+              class="clinical-copy"
+            >
+              {{ item.finding_label }}：{{ item.clinical_meaning }} 建议：{{ item.recommendation }}
+            </p>
+            <p
+              v-for="item in group.findings.filter((entry) => entry.follow_up_exam.length > 0)"
+              :key="`${group.display_name}-${item.finding_label}-exam`"
+              class="clinical-copy"
+            >
+              建议补充检查：{{ item.follow_up_exam.join('、') }}
+            </p>
+          </div>
+        </div>
       </article>
 
       <div class="report-box compact-report-meta">
@@ -127,7 +183,7 @@ function handleExportHtml() {
         <el-button type="success" :disabled="!canFinalize" @click="emit('finalize')">确认为正式报告</el-button>
         <el-button :disabled="!currentRecord" @click="revisionDrawerVisible = true">版本记录</el-button>
         <el-button :disabled="!currentRecord" @click="handlePrintReport">打印预览</el-button>
-        <el-button :disabled="!currentRecord" @click="handleExportHtml">导出 HTML</el-button>
+        <el-button :disabled="!currentRecord" @click="handleExportHtml">下载 PDF 报告</el-button>
       </div>
     </template>
   </el-card>

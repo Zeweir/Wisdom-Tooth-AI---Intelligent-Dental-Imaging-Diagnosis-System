@@ -34,6 +34,8 @@ function getAuditActionLabel(action: string) {
     'report.reviewed': '报告审核',
     'report.finalized': '正式确认',
     'report.revision_created': '报告版本记录',
+    'report.pdf_generated': '报告 PDF 生成',
+    'report.pdf_regenerated': '报告 PDF 重生成',
     'dataset_import.created': '数据导入',
     'dataset_import.zip_uploaded': '样本包上传',
     'dataset_import.url_downloaded': '直链下载导入',

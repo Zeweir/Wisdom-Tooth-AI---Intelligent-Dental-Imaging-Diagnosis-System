@@ -6,6 +6,7 @@ from app.audit import create_system_audit_log
 from app.celery_app import celery_app
 from app.database import SessionLocal
 from app.models import ImageRecord
+from app.report_revisions import create_system_report_revision
 from app.services import finalize_image_record
 from app.storage import storage_service
 
@@ -20,6 +21,18 @@ def run_image_analysis(image_id: str) -> None:
 
         stored_file = storage_service.load_file(image)
         analysis_result = finalize_image_record(image, image_bytes=stored_file.content)
+        if image.report is not None:
+            create_system_audit_log(
+                db,
+                action='report.pdf_generated',
+                resource_type='report',
+                resource_id=image.report.report_id,
+                detail={
+                    'image_id': image.image_id,
+                    'pdf_variant': image.report.pdf_variant,
+                },
+            )
+            create_system_report_revision(db, report=image.report, status='ai_generated')
         create_system_audit_log(
             db,
             action='analysis.completed',

@@ -57,3 +57,13 @@ export async function fetchProtectedBlobUrl(path: string) {
   });
   return URL.createObjectURL(response.data);
 }
+
+export async function fetchProtectedBlob(path: string) {
+  const resolvedUrl = resolveApiUrl(path);
+  const token = accessTokenProvider ? await accessTokenProvider() : null;
+  const response = await axios.get<Blob>(resolvedUrl, {
+    responseType: "blob",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  return response.data;
+}

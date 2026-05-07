@@ -467,6 +467,13 @@
   border-color: #10b981;
 }
 
+.detection-box.is-selected {
+  box-shadow:
+    0 0 0 2px rgba(8, 145, 178, 0.28),
+    0 0 0 4px rgba(8, 145, 178, 0.12),
+    0 10px 20px rgba(15, 23, 42, 0.18);
+}
+
 .detection-box-label {
   position: absolute;
   left: -2px;
@@ -539,6 +546,169 @@
   gap: 10px;
 }
 
+.report-preview-points {
+  display: grid;
+  gap: 8px;
+}
+
+.report-tooth-group {
+  border: 1px solid var(--medical-border);
+  border-radius: var(--medical-radius-md);
+  background: #fff;
+  padding: 10px 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.tooth-overview {
+  display: grid;
+  gap: 12px;
+}
+
+.tooth-overview-legend {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tooth-overview-legend span {
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tooth-overview-legend .is-success {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.tooth-overview-legend .is-warning {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.tooth-overview-legend .is-danger {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.tooth-arch {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(16, minmax(0, 1fr));
+}
+
+.tooth-arch-divider {
+  text-align: center;
+  color: var(--medical-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tooth-cell {
+  min-width: 0;
+  border: 1px solid var(--medical-border);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fff, #f8fafc);
+  padding: 10px 4px;
+  display: grid;
+  gap: 4px;
+  text-align: center;
+}
+
+.tooth-cell strong {
+  color: var(--medical-ink);
+  font-size: 13px;
+}
+
+.tooth-cell small {
+  overflow: hidden;
+  color: var(--medical-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tooth-cell.is-active {
+  border-width: 2px;
+}
+
+.tooth-cell.is-success {
+  border-color: rgba(16, 185, 129, 0.36);
+  background: linear-gradient(180deg, #ffffff, #ecfdf5);
+}
+
+.tooth-cell.is-warning {
+  border-color: rgba(245, 158, 11, 0.42);
+  background: linear-gradient(180deg, #ffffff, #fffbeb);
+}
+
+.tooth-cell.is-danger {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: linear-gradient(180deg, #ffffff, #fef2f2);
+}
+
+.tooth-cell.is-inferred {
+  box-shadow: inset 0 0 0 1px rgba(8, 145, 178, 0.22);
+}
+
+.tooth-cell.is-selected {
+  transform: translateY(-2px);
+  box-shadow:
+    0 10px 24px rgba(8, 145, 178, 0.16),
+    inset 0 0 0 2px rgba(8, 145, 178, 0.28);
+}
+
+.tooth-overview-extras {
+  display: grid;
+  gap: 8px;
+}
+
+.diagnosis-findings-grid {
+  margin-top: 14px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.diagnosis-finding-card {
+  border: 1px solid var(--medical-border);
+  border-radius: var(--medical-radius-md);
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.diagnosis-tooth-card {
+  align-content: start;
+}
+
+.diagnosis-tooth-card.is-selected {
+  border-color: rgba(8, 145, 178, 0.5);
+  box-shadow:
+    0 14px 26px rgba(8, 145, 178, 0.14),
+    inset 0 0 0 1px rgba(8, 145, 178, 0.18);
+}
+
+.diagnosis-tooth-findings {
+  display: grid;
+  gap: 10px;
+}
+
+.diagnosis-tooth-finding {
+  border-top: 1px dashed var(--medical-border);
+  padding-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.diagnosis-tooth-finding:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
 .settings-role-list {
   display: flex;
   flex-wrap: wrap;
@@ -604,8 +774,13 @@
   }
 
   .diagnosis-result-layout,
-  .report-workflow-card {
+  .report-workflow-card,
+  .diagnosis-findings-grid {
     grid-template-columns: 1fr;
+  }
+
+  .tooth-arch {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
   }
 }
 

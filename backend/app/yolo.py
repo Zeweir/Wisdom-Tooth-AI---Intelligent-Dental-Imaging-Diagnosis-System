@@ -70,6 +70,7 @@ def run_yolo_analysis(*, image_bytes: bytes, filename: str) -> YoloAnalysisResul
         from PIL import Image
 
         image = Image.open(BytesIO(image_bytes)).convert('RGB')
+        image_width, image_height = image.size
     except ImportError as exc:
         raise YoloError('Pillow is not installed') from exc
     except Exception as exc:  # noqa: BLE001
@@ -115,6 +116,8 @@ def run_yolo_analysis(*, image_bytes: bytes, filename: str) -> YoloAnalysisResul
                     'confidence': min(1.0, max(0.0, confidence)),
                     'severity': severity,
                     'tooth_id': tooth_id,
+                    'image_width': image_width,
+                    'image_height': image_height,
                 }
             )
 

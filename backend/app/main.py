@@ -24,7 +24,7 @@ from app.dataset_imports import (
 )
 from app.datasets import create_dataset, get_dataset_or_404, get_dataset_summary, list_datasets, seed_public_datasets, serialize_dataset, update_dataset
 from app.model_evaluations import create_model_evaluation, list_model_evaluations, serialize_model_evaluation
-from app.models import AuditLogRecord, ImageRecord, PatientRecord, ReportRecord
+from app.models import AuditLogRecord, ImageRecord, PatientRecord, ReportRecord, ReportRevisionRecord
 from app.patients import (
     create_patient,
     ensure_patient_record,
@@ -63,11 +63,12 @@ from app.schemas import (
     PatientUpdateRequest,
     ReportReviewRequest,
     ReportReviewResponse,
+    ReportPdfResponse,
     ReportRevisionListResponse,
     ReportStatus,
     UploadApiResponse,
 )
-from app.services import build_dashboard_summary, build_image_record, now_utc, serialize_analysis
+from app.services import build_dashboard_summary, build_image_record, normalize_detection_payload, now_utc, refresh_report_artifacts, serialize_analysis
 from app.storage import storage_service
 from app.tasks import run_image_analysis
 
@@ -667,6 +668,70 @@ def get_report_revisions(
     return {"code": 200, "data": items, "meta": {"limit": limit, "offset": offset, "total": total}}
 
 
+@app.get("/api/v1/reports/{report_id}/pdf", response_model=None)
+def get_report_pdf(
+    report_id: str,
+    _: AuthInfo = Depends(require_api_auth('read:images')),
+    db: Session = Depends(get_db),
+) -> Response:
+    statement = select(ReportRecord).options(joinedload(ReportRecord.image)).where(ReportRecord.report_id == report_id)
+    report = db.execute(statement).unique().scalar_one_or_none()
+    if report is None or report.image is None:
+        raise HTTPException(status_code=404, detail="未找到对应报告")
+    stored = storage_service.load_report_file(report)
+    filename = f"wisdom-tooth-report-{report.image.patient_id}.pdf"
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return Response(content=stored.content, media_type=stored.media_type, headers=headers)
+
+
+@app.get("/api/v1/reports/{report_id}/revisions/{revision_id}/pdf", response_model=None)
+def get_report_revision_pdf(
+    report_id: str,
+    revision_id: str,
+    _: AuthInfo = Depends(require_api_auth('read:images')),
+    db: Session = Depends(get_db),
+) -> Response:
+    revision = db.get(ReportRevisionRecord, revision_id)
+    if revision is None or revision.report_id != report_id:
+        raise HTTPException(status_code=404, detail="未找到对应报告版本")
+    stored = storage_service.load_report_revision_file(revision)
+    filename = f"wisdom-tooth-report-revision-{revision.version_no}.pdf"
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return Response(content=stored.content, media_type=stored.media_type, headers=headers)
+
+
+@app.post("/api/v1/reports/{report_id}/pdf/regenerate", response_model=ReportPdfResponse)
+def regenerate_report_pdf(
+    report_id: str,
+    auth: AuthInfo = Depends(require_api_auth('review:reports')),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    statement = select(ReportRecord).options(joinedload(ReportRecord.image)).where(ReportRecord.report_id == report_id)
+    report = db.execute(statement).unique().scalar_one_or_none()
+    if report is None or report.image is None:
+        raise HTTPException(status_code=404, detail="未找到对应报告")
+    refresh_report_artifacts(report.image)
+    create_user_audit_log(
+        db,
+        auth=auth,
+        action='report.pdf_regenerated',
+        resource_type='report',
+        resource_id=report.report_id,
+        detail={'image_id': report.image.image_id, 'pdf_variant': report.pdf_variant},
+    )
+    db.commit()
+    db.refresh(report)
+    return {
+        "code": 200,
+        "data": {
+            "report_id": report.report_id,
+            "pdf_url": f"/api/v1/reports/{report.report_id}/pdf" if report.pdf_file_path or report.pdf_storage_object_key else None,
+            "pdf_variant": report.pdf_variant,
+            "pdf_generated_at": report.pdf_generated_at,
+        },
+    }
+
+
 @app.put("/api/v1/reports/{report_id}/review", response_model=ReportReviewResponse)
 def review_report(
     report_id: str,
@@ -688,7 +753,8 @@ def review_report(
     report.doctor_review = payload.doctor_review
     report.status = payload.status
     if payload.modified_findings:
-        report.image.detections = payload.modified_findings
+        report.image.detections = normalize_detection_payload(payload.modified_findings, image_type=report.image.image_type)
+    refresh_report_artifacts(report.image)
 
     revision = create_report_revision(db, report=report, auth=auth)
 
@@ -729,6 +795,7 @@ def review_report(
             "status": report.status,
             "doctor_review": report.doctor_review,
             "detections": report.image.detections,
+            "pdf_url": f"/api/v1/reports/{report.report_id}/pdf" if report.pdf_file_path or report.pdf_storage_object_key else None,
         },
     }
 

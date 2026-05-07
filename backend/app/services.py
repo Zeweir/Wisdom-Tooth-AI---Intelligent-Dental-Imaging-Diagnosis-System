@@ -1,10 +1,18 @@
 from datetime import datetime, timezone
 from typing import Any
 
+from app.clinical_reports import (
+    build_report_content_from_structured_report,
+    build_structured_report,
+    enrich_detections,
+    normalize_structured_report_payload,
+)
 from app.models import ImageRecord, ReportRecord
 from app.ollama import OllamaError, generate_multimodal_analysis, is_ollama_enabled
+from app.pdf_reports import build_report_pdf_bytes
 from app.schemas import ImageType
 from app.yolo import YoloError, is_yolo_enabled, run_yolo_analysis
+from app.storage import storage_service
 
 
 def now_utc() -> datetime:
@@ -51,19 +59,16 @@ def build_mock_detections(image_type: ImageType) -> list[dict[str, Any]]:
 
 
 def build_report_content(patient_id: str, image_type: ImageType, detections: list[dict[str, Any]]) -> str:
-    findings = '；'.join(
-        f"牙位{item['tooth_id']}提示{item['class']}（{item['severity']}，置信度{item['confidence']:.0%}）"
-        for item in detections
-    ) or '未检出明确高置信度病灶'
-    return (
-        f'患者 {patient_id} 的{image_type}影像已完成初步分析。'
-        f'影像描述：{findings}。'
-        '诊断意见：当前结果为AI辅助判断，建议结合临床检查与病史综合评估。'
-        '治疗建议：优先处理高风险病灶，并由医生审核后形成正式报告。'
+    enriched = enrich_detections(image_type, detections)
+    structured_report = build_structured_report(
+        patient_id=patient_id,
+        image_type=image_type,
+        detections=enriched,
     )
+    return build_report_content_from_structured_report(structured_report)
 
 
-def normalize_detection_payload(detections: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def normalize_detection_payload(detections: list[dict[str, Any]], *, image_type: ImageType) -> list[dict[str, Any]]:
     normalized: list[dict[str, Any]] = []
     for item in detections:
         bbox_value = item.get('bbox', [0, 0, 0, 0])
@@ -92,14 +97,54 @@ def normalize_detection_payload(detections: list[dict[str, Any]]) -> list[dict[s
                 'tooth_id': str(item.get('tooth_id', '未知牙位')),
             }
         )
-    return normalized
+    return enrich_detections(image_type, normalized)
+
+
+def build_pdf_variant(report_status: str) -> str:
+    if report_status == 'finalized':
+        return 'finalized'
+    if report_status == 'doctor_reviewed':
+        return 'doctor_reviewed'
+    return 'ai_draft'
+
+
+def refresh_report_artifacts(image: ImageRecord) -> None:
+    if image.report is None:
+        raise ValueError('image report relation must exist')
+
+    structured_report = build_structured_report(
+        patient_id=image.patient_id,
+        image_type=image.image_type,
+        detections=image.detections or [],
+        doctor_review=image.report.doctor_review,
+    )
+    image.report.structured_content = structured_report
+    image.report.content = build_report_content_from_structured_report(structured_report)
+    image.report.pdf_variant = build_pdf_variant(image.report.status)
+    pdf_bytes = build_report_pdf_bytes(image.report)
+    stored_object = storage_service.save_report_file(
+        file_bytes=pdf_bytes,
+        filename=f'report-{image.report.report_id}.pdf',
+        content_type='application/pdf',
+    )
+    image.report.pdf_storage_provider = stored_object.provider
+    image.report.pdf_storage_bucket = stored_object.bucket
+    image.report.pdf_storage_object_key = stored_object.object_key
+    image.report.pdf_file_path = stored_object.file_path
+    image.report.pdf_generated_at = now_utc()
 
 
 def build_fallback_analysis(image: ImageRecord) -> dict[str, Any]:
-    detections = build_mock_detections(image.image_type)
+    detections = normalize_detection_payload(build_mock_detections(image.image_type), image_type=image.image_type)
+    structured_report = build_structured_report(
+        patient_id=image.patient_id,
+        image_type=image.image_type,
+        detections=detections,
+    )
     return {
         'detections': detections,
-        'report': build_report_content(image.patient_id, image.image_type, detections),
+        'report': build_report_content_from_structured_report(structured_report),
+        'structured_report': structured_report,
         'summary': '使用内置规则生成的兜底分析结果。',
         'source': 'mock_fallback',
         'model': None,
@@ -112,10 +157,16 @@ def generate_analysis_result(image: ImageRecord, image_bytes: bytes | None) -> d
     if image_bytes and is_yolo_enabled():
         try:
             yolo_result = run_yolo_analysis(image_bytes=image_bytes, filename=image.filename)
-            detections = normalize_detection_payload(yolo_result.detections)
+            detections = normalize_detection_payload(yolo_result.detections, image_type=image.image_type)
+            structured_report = build_structured_report(
+                patient_id=image.patient_id,
+                image_type=image.image_type,
+                detections=detections,
+            )
             return {
                 'detections': detections,
-                'report': build_report_content(image.patient_id, image.image_type, detections),
+                'report': build_report_content_from_structured_report(structured_report),
+                'structured_report': structured_report,
                 'summary': '使用 YOLO 模型完成牙科影像检测。',
                 'source': 'yolo',
                 'model': yolo_result.model,
@@ -138,14 +189,20 @@ def generate_analysis_result(image: ImageRecord, image_bytes: bytes | None) -> d
         fallback['error'] = str(exc)
         return fallback
 
-    detections = normalize_detection_payload(ollama_result.detections)
+    detections = normalize_detection_payload(ollama_result.detections, image_type=image.image_type)
     if not detections:
         detections = fallback['detections']
 
-    report = ollama_result.report.strip() or build_report_content(image.patient_id, image.image_type, detections)
+    structured_report = build_structured_report(
+        patient_id=image.patient_id,
+        image_type=image.image_type,
+        detections=detections,
+    )
+    report = ollama_result.report.strip() or build_report_content_from_structured_report(structured_report)
     return {
         'detections': detections,
         'report': report,
+        'structured_report': structured_report,
         'summary': ollama_result.summary,
         'source': 'ollama',
         'model': ollama_result.model,
@@ -171,8 +228,12 @@ def serialize_analysis(image: ImageRecord, patient: dict[str, Any] | None = None
         'report': {
             'report_id': image.report.report_id,
             'content': image.report.content,
+            'structured_content': normalize_structured_report_payload(image.report.structured_content),
             'doctor_review': image.report.doctor_review,
             'status': image.report.status,
+            'pdf_url': f'/api/v1/reports/{image.report.report_id}/pdf' if image.report.pdf_file_path or image.report.pdf_storage_object_key else None,
+            'pdf_variant': image.report.pdf_variant,
+            'pdf_generated_at': image.report.pdf_generated_at.isoformat() if image.report.pdf_generated_at else None,
         },
         'created_at': image.created_at.isoformat(),
         'updated_at': image.updated_at.isoformat(),
@@ -269,9 +330,12 @@ def finalize_image_record(image: ImageRecord, *, image_bytes: bytes | None = Non
     if image.report is None:
         image.report = ReportRecord(
             content='',
+            structured_content={},
             doctor_review=None,
             status='processing',
         )
     image.report.content = analysis_result['report']
+    image.report.structured_content = analysis_result.get('structured_report', {})
     image.report.status = 'ai_generated'
+    refresh_report_artifacts(image)
     return analysis_result

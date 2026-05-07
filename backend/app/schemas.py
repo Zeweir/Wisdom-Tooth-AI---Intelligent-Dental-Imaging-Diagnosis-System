@@ -22,8 +22,12 @@ class Detection(BaseModel):
 class ReportPayload(BaseModel):
     report_id: str
     content: str
+    structured_content: dict[str, Any]
     doctor_review: str | None
     status: ReportStatus
+    pdf_url: str | None = None
+    pdf_variant: str | None = None
+    pdf_generated_at: datetime | None = None
 
 
 class PatientSummaryPayload(BaseModel):
@@ -89,6 +93,7 @@ class ReportReviewResponseData(BaseModel):
     status: str
     doctor_review: str | None
     detections: list[dict[str, Any]]
+    pdf_url: str | None = None
 
 
 class ReportReviewResponse(BaseModel):
@@ -103,8 +108,12 @@ class ReportRevisionPayload(BaseModel):
     version_no: int
     status: ReportStatus
     content: str
+    structured_content: dict[str, Any]
     doctor_review: str | None
     detections: list[dict[str, Any]]
+    pdf_url: str | None = None
+    pdf_variant: str | None = None
+    pdf_generated_at: datetime | None = None
     actor_sub: str
     actor_roles: list[str]
     created_at: datetime
@@ -114,6 +123,18 @@ class ReportRevisionListResponse(BaseModel):
     code: int
     data: list[ReportRevisionPayload]
     meta: PaginationMeta
+
+
+class ReportPdfResponseData(BaseModel):
+    report_id: str
+    pdf_url: str | None
+    pdf_variant: str | None
+    pdf_generated_at: datetime | None
+
+
+class ReportPdfResponse(BaseModel):
+    code: int
+    data: ReportPdfResponseData
 
 
 class AuditLogPayload(BaseModel):

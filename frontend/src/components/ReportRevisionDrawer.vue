@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue'
 import { listReportRevisions } from '../api/analysis'
 import type { PaginationMeta, ReportRevision } from '../types/analysis'
 import { getReportStatusLabel, getReportStatusTagType } from '../utils/display'
+import { downloadProtectedReportUrl } from '../utils/report'
 
 const props = defineProps<{
   reportId: string | null
@@ -42,6 +43,13 @@ async function handlePageChange(page: number) {
   await refreshRevisions()
 }
 
+function downloadRevisionPdf(revision: ReportRevision) {
+  if (!revision.pdf_url) {
+    return
+  }
+  void downloadProtectedReportUrl(revision.pdf_url, `wisdom-tooth-report-revision-${revision.version_no}.pdf`)
+}
+
 watch(
   () => [visible.value, props.reportId],
   async () => {
@@ -77,9 +85,13 @@ watch(
           <strong>医生意见</strong>
           <span>{{ revision.doctor_review || '暂无医生审核意见' }}</span>
         </div>
+        <div class="record-meta">
+          <el-tag v-if="revision.pdf_variant" type="info">{{ revision.pdf_variant }}</el-tag>
+          <el-button v-if="revision.pdf_url" text @click="downloadRevisionPdf(revision)">下载版本 PDF</el-button>
+        </div>
         <details class="compact-details">
           <summary>查看报告内容</summary>
-          <p class="clinical-copy">{{ revision.content }}</p>
+          <p class="clinical-copy">{{ revision.structured_content.summary || revision.content }}</p>
         </details>
       </article>
 

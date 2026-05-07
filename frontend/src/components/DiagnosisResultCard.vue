@@ -3,6 +3,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { fetchProtectedBlobUrl } from '../api/http'
 import type { AnalysisItem } from '../types/analysis'
+import { downloadClinicalReport } from '../utils/report'
+import ToothOverviewChart from './ToothOverviewChart.vue'
 
 const props = defineProps<{
   currentRecord: AnalysisItem | null
@@ -13,6 +15,7 @@ const imageRef = ref<HTMLImageElement | null>(null)
 const previewShellRef = ref<HTMLElement | null>(null)
 const previewSize = ref({ width: 0, height: 0 })
 const naturalSize = ref({ width: 0, height: 0 })
+const selectedToothKey = ref<string | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
 const averageConfidence = computed(() => {
@@ -35,29 +38,52 @@ const riskLevel = computed(() => {
 })
 
 const conclusion = computed(() => {
-  const count = props.currentRecord?.detections.length ?? 0
-  if (count === 0) {
-    return '未见明显异常'
-  }
-  return `检测到 ${count} 项疑似问题，建议结合临床复核`
-})
-
-const suspectedProblems = computed(() => {
-  const classes = (props.currentRecord?.detections ?? []).map((item) => item.class)
-  return Array.from(new Set(classes))
+  return props.currentRecord?.report.structured_content.summary || props.currentRecord?.report.content || '未见明显异常'
 })
 
 const recommendation = computed(() => {
-  if ((props.currentRecord?.detections.length ?? 0) === 0) {
+  const plans = props.currentRecord?.report.structured_content.follow_up_plan ?? []
+  if (!plans.length) {
     return '建议结合患者主诉与体征进行常规随访。'
   }
-  if (riskLevel.value.label === '高风险') {
-    return '建议优先安排专科复诊，必要时补充 CBCT 或根尖片。'
+  return plans.join('；')
+})
+const toothFindingGroups = computed(() => {
+  const reportGroups = props.currentRecord?.report.structured_content.tooth_findings ?? []
+  if (reportGroups.length > 0) {
+    return reportGroups
   }
-  if (riskLevel.value.label === '中风险') {
-    return '建议在一周内复查并结合临床检查确认病灶范围。'
+  const grouped = new Map<string, { tooth_id: string; display_name: string; source: "model_mapped" | "layout_inferred" | "unknown"; findings: Array<{
+    finding_label: string
+    severity: string
+    confidence: number
+    clinical_meaning: string
+    risk_hint: string
+    recommendation: string
+    evidence_summary: string
+    follow_up_exam: string[]
+  }> }>()
+  for (const item of props.currentRecord?.detections ?? []) {
+    const displayName = item.tooth_display_name || item.tooth_id || '局部区域异常'
+    const group = grouped.get(displayName) ?? {
+      tooth_id: item.tooth_id,
+      display_name: displayName,
+      source: item.tooth_confidence_source || 'unknown',
+      findings: [],
+    }
+    group.findings.push({
+      finding_label: item.finding_label || item.class,
+      severity: item.severity,
+      confidence: item.confidence,
+      clinical_meaning: item.clinical_meaning || '',
+      risk_hint: item.risk_hint || '',
+      recommendation: item.recommendation || '',
+      evidence_summary: item.evidence_summary || '',
+      follow_up_exam: item.follow_up_exam || [],
+    })
+    grouped.set(displayName, group)
   }
-  return '建议常规复查并进行口腔卫生管理。'
+  return Array.from(grouped.values())
 })
 
 const detectionBoxes = computed(() => {
@@ -93,8 +119,10 @@ const detectionBoxes = computed(() => {
 
       return {
         key: `${item.tooth_id}-${item.class}-${index}`,
-        label: `${item.tooth_id} ${item.class} ${Math.round(item.confidence * 100)}%`,
+        toothKey: item.tooth_display_name || item.tooth_id,
+        label: `${item.tooth_display_name || item.tooth_id} ${item.finding_label || item.class} ${Math.round(item.confidence * 100)}%`,
         className: {
+          'is-selected': selectedToothKey.value === (item.tooth_display_name || item.tooth_id),
           'is-high-risk': severity.includes('重') || severity.includes('high'),
           'is-medium-risk': severity.includes('中') || severity.includes('medium'),
           'is-low-risk': severity.includes('低') || severity.includes('low'),
@@ -156,6 +184,13 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => props.currentRecord?.image_id,
+  () => {
+    selectedToothKey.value = null
+  }
+)
+
 onMounted(() => {
   resizeObserver = new ResizeObserver(updatePreviewSize)
   if (previewShellRef.value) {
@@ -168,6 +203,27 @@ onBeforeUnmount(() => {
   resizeObserver?.disconnect()
   resetPreviewUrl()
 })
+
+function handleDownloadPdf() {
+  if (!props.currentRecord) {
+    return
+  }
+  void downloadClinicalReport(props.currentRecord)
+}
+
+function getToothSourceLabel(source: string | undefined) {
+  if (source === 'model_mapped') {
+    return '模型牙位'
+  }
+  if (source === 'layout_inferred') {
+    return '推测牙位'
+  }
+  return '局部区域'
+}
+
+function handleToothSelect(toothKey: string | null) {
+  selectedToothKey.value = toothKey
+}
 </script>
 
 <template>
@@ -227,17 +283,76 @@ onBeforeUnmount(() => {
             <el-progress :percentage="averageConfidence" :stroke-width="8" />
           </div>
           <div class="summary-item">
-            <span>疑似问题</span>
+            <span>高优先级问题</span>
             <div class="tag-wrap">
-              <el-tag v-for="item in suspectedProblems" :key="item" type="warning" effect="light">{{ item }}</el-tag>
-              <el-tag v-if="suspectedProblems.length === 0" type="success" effect="light">无明显异常</el-tag>
+              <el-tag
+                v-for="item in currentRecord.report.structured_content.high_priority_findings"
+                :key="item"
+                type="danger"
+                effect="light"
+              >
+                {{ item }}
+              </el-tag>
+              <el-tag v-if="currentRecord.report.structured_content.high_priority_findings.length === 0" type="success" effect="light">
+                暂无高优先问题
+              </el-tag>
             </div>
           </div>
           <div class="summary-item">
             <span>建议处理方案</span>
             <p>{{ recommendation }}</p>
           </div>
+          <div class="summary-item">
+            <span>正式 PDF 报告</span>
+            <div class="quick-action-row">
+              <el-button type="primary" @click="handleDownloadPdf">下载 PDF 报告</el-button>
+              <el-tag v-if="currentRecord.report.pdf_variant" type="info">{{ currentRecord.report.pdf_variant }}</el-tag>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div class="diagnosis-findings-grid">
+        <ToothOverviewChart
+          :tooth-findings="toothFindingGroups"
+          :selected-tooth-key="selectedToothKey"
+          @select="handleToothSelect"
+        />
+        <article
+          v-for="group in toothFindingGroups"
+          :key="`${group.display_name}-${group.source}`"
+          class="diagnosis-finding-card diagnosis-tooth-card"
+          :class="{ 'is-selected': selectedToothKey === group.display_name }"
+          @click="handleToothSelect(selectedToothKey === group.display_name ? null : group.display_name)"
+        >
+          <div class="panel-header">
+            <strong>{{ group.display_name }}</strong>
+            <el-tag :type="group.source === 'layout_inferred' ? 'warning' : group.source === 'unknown' ? 'info' : 'success'">
+              {{ getToothSourceLabel(group.source) }}
+            </el-tag>
+          </div>
+          <div class="diagnosis-tooth-findings">
+            <article
+              v-for="item in group.findings"
+              :key="`${group.display_name}-${item.finding_label}-${item.confidence}`"
+              class="diagnosis-tooth-finding"
+            >
+              <div class="panel-header">
+                <span>{{ item.finding_label }}</span>
+                <el-tag :type="item.severity.includes('高') ? 'danger' : item.severity.includes('中') ? 'warning' : 'success'">
+                  {{ Math.round(item.confidence * 100) }}%
+                </el-tag>
+              </div>
+              <div class="record-meta">
+                <span>{{ item.severity }}</span>
+                <span v-if="item.follow_up_exam.length > 0">补充 {{ item.follow_up_exam.join('、') }}</span>
+              </div>
+              <p class="clinical-copy"><strong>临床含义：</strong>{{ item.clinical_meaning || item.evidence_summary || '暂无解释' }}</p>
+              <p class="clinical-copy"><strong>风险提示：</strong>{{ item.risk_hint || '请结合医生复核。' }}</p>
+              <p class="clinical-copy"><strong>处理建议：</strong>{{ item.recommendation || '建议结合临床检查确认。' }}</p>
+            </article>
+          </div>
+        </article>
       </div>
     </template>
   </el-card>

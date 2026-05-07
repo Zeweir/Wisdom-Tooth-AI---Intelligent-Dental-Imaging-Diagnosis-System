@@ -84,6 +84,7 @@ export async function reviewReport(
       status: string;
       doctor_review: string;
       detections: Detection[];
+      pdf_url?: string;
     };
   }>(`/api/v1/reports/${reportId}/review`, payload);
   return response.data.data;

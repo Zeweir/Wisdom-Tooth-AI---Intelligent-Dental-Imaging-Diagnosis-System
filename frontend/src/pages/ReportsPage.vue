@@ -47,14 +47,14 @@ function openDetail(record: AnalysisItem) {
 function generateReport(record: AnalysisItem) {
   selectedRecord.value = record
   detailVisible.value = true
-  ElMessage.success('报告内容已生成，可在详情中下载或打印')
+  ElMessage.success('报告已准备完成，可下载 PDF 或查看结构化内容')
 }
 
 function getResultText(record: AnalysisItem) {
   if (record.detections.length === 0) {
     return '未见明显异常'
   }
-  return record.detections.slice(0, 2).map((item) => item.class).join('、')
+  return record.detections.slice(0, 2).map((item) => item.finding_label || item.class).join('、')
 }
 
 function getRouteImageId() {
@@ -175,7 +175,7 @@ onMounted(async () => {
           <template #default="scope">
             <el-button text @click="openDetail(scope.row)">查看详情</el-button>
             <el-button text @click="generateReport(scope.row)">生成报告</el-button>
-            <el-button text @click="downloadClinicalReport(scope.row)">下载</el-button>
+            <el-button text @click="downloadClinicalReport(scope.row)">下载 PDF</el-button>
             <RouterLink :to="{ path: '/workspace', query: { image_id: scope.row.image_id } }" class="el-button is-text">
               <span>进入诊断</span>
             </RouterLink>

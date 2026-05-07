@@ -9,6 +9,7 @@ import UnauthorizedPanel from '../components/UnauthorizedPanel.vue'
 import type { AnalysisItem, PaginationMeta } from '../types/analysis'
 import type { PatientFormPayload, PatientRecord } from '../types/patient'
 import { getImageTypeLabel, getReportStatusLabel, getReportStatusTagType } from '../utils/display'
+import { downloadClinicalReport } from '../utils/report'
 import { useWorkbenchContext } from '../workbench'
 
 const workbench = useWorkbenchContext()
@@ -450,7 +451,50 @@ onMounted(async () => {
             <span>AI 报告草稿</span>
             <el-tag type="info">{{ previewReport.report.content.length }} 字</el-tag>
           </div>
-          <p>{{ previewReport.report.content || '暂无报告内容' }}</p>
+          <p>{{ previewReport.report.structured_content.summary || previewReport.report.content || '暂无报告内容' }}</p>
+        </article>
+        <article v-if="previewReport.report.structured_content.key_findings.length > 0" class="report-box">
+          <div class="panel-header">
+            <span>关键发现</span>
+            <el-tag type="danger">{{ previewReport.report.structured_content.high_priority_findings.length }} 个高优先问题</el-tag>
+          </div>
+          <div class="report-preview-points">
+            <p v-for="item in previewReport.report.structured_content.key_findings" :key="item" class="clinical-copy">{{ item }}</p>
+          </div>
+        </article>
+        <article v-if="previewReport.report.structured_content.tooth_findings.length > 0" class="report-box">
+          <div class="panel-header">
+            <span>按牙位问题说明</span>
+            <el-tag type="info">{{ previewReport.report.structured_content.tooth_findings.length }} 个牙位</el-tag>
+          </div>
+          <div class="report-preview-points">
+            <div
+              v-for="group in previewReport.report.structured_content.tooth_findings"
+              :key="`${group.display_name}-${group.source}`"
+              class="report-tooth-group"
+            >
+              <div class="panel-header">
+                <strong>{{ group.display_name }}</strong>
+                <el-tag :type="group.source === 'layout_inferred' ? 'warning' : group.source === 'unknown' ? 'info' : 'success'">
+                  {{ group.source === 'layout_inferred' ? '推测牙位' : group.source === 'unknown' ? '局部区域' : '模型牙位' }}
+                </el-tag>
+              </div>
+              <p
+                v-for="item in group.findings"
+                :key="`${group.display_name}-${item.finding_label}-${item.confidence}`"
+                class="clinical-copy"
+              >
+                {{ item.finding_label }}：{{ item.clinical_meaning }} 建议：{{ item.recommendation }}
+              </p>
+              <p
+                v-for="item in group.findings.filter((entry) => entry.follow_up_exam.length > 0)"
+                :key="`${group.display_name}-${item.finding_label}-exam`"
+                class="clinical-copy"
+              >
+                建议补充检查：{{ item.follow_up_exam.join('、') }}
+              </p>
+            </div>
+          </div>
         </article>
         <article class="report-box">
           <div class="panel-header">
@@ -460,6 +504,7 @@ onMounted(async () => {
           <p class="clinical-copy">{{ previewReport.report.doctor_review || '暂无医生审核意见' }}</p>
         </article>
         <div class="quick-action-row">
+          <el-button type="primary" @click="downloadClinicalReport(previewReport)">下载 PDF 报告</el-button>
           <el-button @click="revisionDrawerVisible = true">查看版本历史</el-button>
           <RouterLink
             :to="{ path: '/workspace', query: { image_id: previewReport.image_id } }"
