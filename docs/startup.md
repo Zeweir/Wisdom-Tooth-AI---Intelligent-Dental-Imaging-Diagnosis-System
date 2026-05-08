@@ -7,6 +7,8 @@
 - 服务访问地址
 - 常见问题排查
 
+如果你是在有公网 IP 的服务器上部署，请优先看 [deploy.md](C:/Projects/Wisdom-Tooth-AI---Intelligent-Dental-Imaging-Diagnosis-System/docs/deploy.md)。
+
 ## 一、项目结构
 
 当前项目包含以下模块：

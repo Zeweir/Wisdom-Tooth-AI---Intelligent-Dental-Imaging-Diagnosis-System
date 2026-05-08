@@ -65,7 +65,9 @@ docker compose up -d postgres
 DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/wisdom_tooth_ai
 ```
 
-本地 Ollama 配置也已写入 `.env.example`，默认示例为：
+上面这段是本地开发示例。Docker 部署参数请使用根目录 `.env`，服务器部署步骤见 [docs/deploy.md](C:/Projects/Wisdom-Tooth-AI---Intelligent-Dental-Imaging-Diagnosis-System/docs/deploy.md)。
+
+本地 Ollama 示例配置：
 
 ```env
 OLLAMA_ENABLED=true
@@ -162,11 +164,26 @@ VITE_LOGTO_API_RESOURCE=https://api.wisdom-tooth-ai.local
 
 ## Docker Compose 一键启动
 
+推荐先复制根目录环境变量模板：
+
+```bash
+cp .env.example .env
+```
+
+服务器部署时，至少把 `.env` 里的 `PUBLIC_HOST` 改成你的公网 IP，并在 Logto 中创建 SPA 应用后填好 `VITE_LOGTO_APP_ID`。完整步骤见 [docs/deploy.md](C:/Projects/Wisdom-Tooth-AI---Intelligent-Dental-Imaging-Diagnosis-System/docs/deploy.md)。
+
 ```bash
 docker compose up --build
 ```
 
-Docker 前端构建会读取 `frontend/.env.local` 中的 Logto 配置，尤其是 `VITE_LOGTO_APP_ID`。如果该文件把 `VITE_API_BASE_URL` 写成 `http://127.0.0.1:8000`，浏览器会直连宿主机 8000；如需统一走前端 nginx 代理，可将 `VITE_API_BASE_URL` 留空并重新构建。
+Docker 前端构建会读取根目录 `.env` 里的 `VITE_*` 变量，尤其是 `VITE_LOGTO_APP_ID`。如需统一走前端 nginx 代理，请将 `VITE_API_BASE_URL` 留空并重新构建前端镜像。
+
+如果启用仓库内置的 `gateway` 反向代理，推荐对外只开放：
+
+- `80`：跳转到 HTTPS
+- `443`：前端与接口统一 HTTPS 入口
+- `3001`：Logto OIDC
+- `3002`：仅初始化期间临时开放的 Logto Admin
 
 启动后访问：
 

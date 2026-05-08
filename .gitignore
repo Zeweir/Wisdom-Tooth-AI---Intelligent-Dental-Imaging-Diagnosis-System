@@ -43,6 +43,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Generated TLS certificates
+deploy/nginx/certs/*.crt
+deploy/nginx/certs/*.key
+
 # OS and editor files
 .DS_Store
 Thumbs.db

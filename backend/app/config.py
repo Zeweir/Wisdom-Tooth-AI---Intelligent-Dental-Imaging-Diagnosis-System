@@ -69,6 +69,11 @@ YOLO_DEVICE = os.getenv('YOLO_DEVICE', '')
 YOLO_CLASS_MAP_JSON = os.getenv('YOLO_CLASS_MAP_JSON', '')
 
 ALLOWED_ORIGINS = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
+    *env_list(
+        'ALLOWED_ORIGINS',
+        [
+            'http://localhost:5173',
+            'http://127.0.0.1:5173',
+        ],
+    ),
 ]
