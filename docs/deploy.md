@@ -1,6 +1,6 @@
 # 服务器部署文档
 
-本文档面向“项目已经拷到一台有公网 IP 的 Linux 服务器上”的场景。
+本文档面向“项目要部署到一台有公网 IP 的 Linux 服务器上”的场景。
 
 当前仓库已经调整为可直接通过 `docker compose up -d --build` 部署，但前提是先准备好根目录 `.env`。
 
@@ -10,12 +10,32 @@
 - `frontend`、`backend`、`logto`、`postgres`、`redis`、`minio` 默认只绑定本机或容器网络
 - 浏览器访问应用统一走 `https://公网IP/`
 
-## 一、部署前准备
+## 一、先把代码放到服务器
+
+推荐先把本地代码推到 GitHub，再由服务器拉取。
+
+公共仓库可直接执行：
+
+```bash
+git clone https://github.com/<owner>/<repo>.git
+cd <repo>
+```
+
+私有仓库也可以继续使用 `Git HTTPS`：
+
+- 直接执行 `git clone https://github.com/<owner>/<repo>.git`
+- 在 Git 提示输入凭据时，用户名填 GitHub 用户名
+- 密码位置填 GitHub `PAT`
+
+这一步不要求你在服务器上完整“登录 GitHub 账号”。如果后续你更偏向长期免密维护，也可以改成 SSH deploy key。
+
+## 二、部署前准备
 
 服务器建议至少具备：
 
 - Docker Engine
 - Docker Compose Plugin
+- git
 - 2 核 CPU / 4 GB 内存起步
 - 能访问 Docker Hub
 
@@ -26,7 +46,32 @@
 
 如果服务器在中国大陆，建议一开始就把 Docker、`apt`、`pip`、`npm` 的拉取源切到国内镜像，否则最容易卡在构建阶段。
 
-## 二、初始化环境变量
+## 三、初始化环境变量和证书
+
+推荐直接执行仓库内置引导脚本：
+
+```bash
+chmod +x deploy/bootstrap-public-ip.sh
+./deploy/bootstrap-public-ip.sh 你的公网IP
+```
+
+这个脚本会自动完成：
+
+- 从 `.env.example` 生成根目录 `.env`
+- 设置 `PUBLIC_SCHEME=https`
+- 设置 `PUBLIC_HOST=你的公网IP`
+- 更新 `ALLOWED_ORIGINS`
+- 为 `POSTGRES_PASSWORD`、`LOGTO_POSTGRES_PASSWORD`、`MINIO_ROOT_PASSWORD` 生成强密码
+- 清空 `VITE_LOGTO_APP_ID`
+- 生成 `deploy/nginx/certs/server.crt` 和 `server.key`
+
+如果你已经有 `.env`，可改用：
+
+```bash
+./deploy/bootstrap-public-ip.sh 你的公网IP --force
+```
+
+如果你想手动处理，也可以继续按下面步骤执行。
 
 在仓库根目录执行：
 
@@ -96,7 +141,7 @@ GATEWAY_LOGTO_ADMIN_BIND_HOST=127.0.0.1
 
 改好后重新执行一次 `docker compose up -d` 即可。
 
-## 三、首次启动 Logto
+## 四、首次启动 Logto
 
 第一次部署建议先只启动 Logto 相关服务：
 
@@ -133,7 +178,9 @@ docker compose up -d logto-postgres logto
 VITE_LOGTO_APP_ID=你的Logto SPA App ID
 ```
 
-## 四、完整启动项目
+因为 `VITE_LOGTO_APP_ID` 是前端构建参数，填完后需要重新构建前端镜像。如果你这时还没执行过完整启动，直接继续下一步即可。
+
+## 五、完整启动项目
 
 执行：
 
@@ -150,7 +197,7 @@ docker compose up -d --build
 - `gateway` 会把 `3001`、`3002` 作为独立 HTTPS 入口分别转发到 Logto OIDC 和 Logto Admin
 - 不需要额外暴露后端给公网
 
-## 五、访问地址
+## 六、访问地址
 
 启动成功后：
 
@@ -168,7 +215,18 @@ docker compose ps
 docker compose logs -f backend frontend logto celery-worker
 ```
 
-## 六、生产建议
+## 七、后续更新方式
+
+代码更新后的推荐命令：
+
+- 先在服务器仓库目录执行 `git pull`
+- 只改了后端代码或后端依赖：`docker compose up -d --build backend celery-worker`
+- 只改了前端代码或任意 `VITE_*` 变量：`docker compose up -d --build frontend`
+- 改了 `PUBLIC_HOST`、Logto 相关地址、登录回调或 issuer：`docker compose up -d --build backend celery-worker logto frontend`
+
+如果只调整了普通运行时环境变量而不涉及前端 `VITE_*`，通常不需要重建前端镜像。
+
+## 八、生产建议
 
 上线前建议至少做这几件事：
 
@@ -179,7 +237,19 @@ docker compose logs -f backend frontend logto celery-worker
 5. 如果服务器访问不到外部 Ollama，把 `OLLAMA_ENABLED=false`，避免分析任务长时间超时。
 6. 如果没有 YOLO 权重，把 `YOLO_ENABLED=false`。
 
-## 七、常见问题
+## 九、验收检查
+
+部署完成后，至少验证这些点：
+
+1. `docker compose ps` 中核心服务都为运行状态
+2. `curl http://127.0.0.1:8000/health` 返回正常
+3. 打开 `https://你的公网IP/` 能访问前端
+4. 打开 `https://你的公网IP:3001` 和 `https://你的公网IP:3002` 能访问 Logto OIDC / Admin
+5. 前端点击登录后能正常跳转、回调并拿到登录态
+6. 上传一张图片后，任务能完成
+7. 如果当前 `OLLAMA_ENABLED=false` 且 `YOLO_ENABLED=false`，也要确认系统能走 mock 分析链路
+
+## 十、常见问题
 
 ### 1. 页面能打开，但点登录后失败
 

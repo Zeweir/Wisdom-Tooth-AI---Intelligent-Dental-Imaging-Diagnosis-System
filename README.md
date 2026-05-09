@@ -170,7 +170,14 @@ VITE_LOGTO_API_RESOURCE=https://api.wisdom-tooth-ai.local
 cp .env.example .env
 ```
 
-服务器部署时，至少把 `.env` 里的 `PUBLIC_HOST` 改成你的公网 IP，并在 Logto 中创建 SPA 应用后填好 `VITE_LOGTO_APP_ID`。完整步骤见 [docs/deploy.md](C:/Projects/Wisdom-Tooth-AI---Intelligent-Dental-Imaging-Diagnosis-System/docs/deploy.md)。
+如果是公网 IP + HTTPS 部署，推荐直接执行：
+
+```bash
+chmod +x deploy/bootstrap-public-ip.sh
+./deploy/bootstrap-public-ip.sh 你的公网IP
+```
+
+这个脚本会自动生成根目录 `.env`、强密码和自签证书。然后先启动 `logto-postgres`、`logto` 完成 Logto 初始化，再回填 `VITE_LOGTO_APP_ID` 并执行完整构建。完整步骤见 [docs/deploy.md](C:/Projects/Wisdom-Tooth-AI---Intelligent-Dental-Imaging-Diagnosis-System/docs/deploy.md)。
 
 ```bash
 docker compose up --build
