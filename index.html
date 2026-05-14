@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI牙科健康助手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #F7F8FA;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .safe-area-inset-bottom {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .page-transition {
+            transition: opacity 0.2s ease-in-out;
+        }
+
+        .active-tab {
+            color: #3B82F6;
+        }
+
+        /* 自定义进度条滑块 */
+        .severity-slider {
+            background: linear-gradient(to right, #10B981 0%, #10B981 33%, #F59E0B 33%, #F59E0B 66%, #EF4444 66%, #EF4444 100%);
+            height: 8px;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .severity-pointer {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* 底部导航动画 */
+        .nav-item i {
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .nav-item.active i {
+            transform: translateY(-4px) scale(1.1);
+        }
+    </style>
+</head>
+<body class="max-w-md mx-auto min-h-screen shadow-2xl relative bg-gray-50">
+
+    <div id="app" class="pb-24">
+        
+        <!-- 顶部状态栏模拟 (iOS 风格) -->
+        <div class="sticky top-0 z-50 bg-white px-6 py-3 flex justify-between items-center text-sm font-semibold">
+            <span>9:41</span>
+            <div class="flex gap-1.5 items-center">
+                <i class="fas fa-signal text-xs"></i>
+                <i class="fas fa-wifi text-xs"></i>
+                <i class="fas fa-battery-full"></i>
+            </div>
+        </div>
+
+        <!-- 页面容器 -->
+        <main id="main-content" class="page-transition">
+            <!-- 初始内容将通过 JavaScript 渲染 -->
+        </main>
+
+        <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-100 flex justify-around py-3 safe-area-inset-bottom z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.03)]">
+            <button onclick="switchPage('home')" class="nav-item active flex flex-col items-center gap-1 group" id="nav-home">
+                <i class="fas fa-home text-xl text-gray-400 group-[.active]:text-blue-500"></i>
+                <span class="text-[10px] text-gray-400 group-[.active]:text-blue-500">首页</span>
+            </button>
+            <button onclick="switchPage('diagnosis')" class="nav-item flex flex-col items-center gap-1 group" id="nav-diagnosis">
+                <i class="fas fa-tooth text-xl text-gray-400 group-[.active]:text-blue-500"></i>
+                <span class="text-[10px] text-gray-400 group-[.active]:text-blue-500">诊断</span>
+            </button>
+            <button onclick="switchPage('find')" class="nav-item flex flex-col items-center gap-1 group" id="nav-find">
+                <i class="fas fa-user-md text-xl text-gray-400 group-[.active]:text-blue-500"></i>
+                <span class="text-[10px] text-gray-400 group-[.active]:text-blue-500">找医生</span>
+            </button>
+            <button onclick="switchPage('profile')" class="nav-item flex flex-col items-center gap-1 group" id="nav-profile">
+                <i class="fas fa-user text-xl text-gray-400 group-[.active]:text-blue-500"></i>
+                <span class="text-[10px] text-gray-400 group-[.active]:text-blue-500">我的</span>
+            </button>
+        </nav>
+    </div>
+
+    <script>
+        // 模拟页面数据
+        const pages = {
+            splash: `
+                <!-- 启动页 (参考 微信图片_20260512103128_1116_4565.png) -->
+                <div class="flex flex-col items-center justify-center min-h-[80vh] px-10 text-center animate-fade-in">
+                    <div class="relative w-48 h-48 mb-12">
+                        <div class="absolute inset-0 bg-blue-100 rounded-full animate-pulse opacity-50"></div>
+                        <img src="https://placehold.co/200x200/3B82F6/FFFFFF?text=AI+TOOTH" class="rounded-full w-full h-full object-cover relative z-10 shadow-lg" alt="Logo">
+                    </div>
+                    <h1 class="text-3xl font-bold text-blue-600 mb-2">AI牙科健康助手</h1>
+                    <p class="text-gray-400 mb-16">智能诊断 · 精准推荐 · 便捷就医</p>
+                    <button onclick="switchPage('home')" class="w-full bg-blue-500 text-white py-4 rounded-full font-bold text-lg shadow-xl shadow-blue-200 active:scale-95 transition-transform">立即体验</button>
+                    <p class="mt-6 text-sm text-gray-400">已有账号？ <span class="text-blue-500 font-semibold">立即登录</span></p>
+                </div>
+            `,
+            home: `
+                <!-- 首页 (参考 微信图片_20260512103130_1117_4565.png) -->
+                <div class="px-5 pt-2 animate-fade-in">
+                    <!-- 搜索栏 -->
+                    <div class="bg-gray-100 rounded-full flex items-center px-4 py-2.5 mb-6">
+                        <i class="fas fa-search text-gray-400 mr-2"></i>
+                        <input type="text" placeholder="搜索症状、疾病、医生..." class="bg-transparent w-full outline-none text-sm">
+                        <i class="far fa-bell text-gray-600 ml-2"></i>
+                    </div>
+
+                    <!-- 健康档案卡片 -->
+                    <div class="bg-white rounded-3xl p-5 shadow-sm mb-6 border border-gray-50">
+                        <div class="flex justify-between items-start mb-4">
+                            <h3 class="font-bold text-lg text-gray-800">我的健康档案</h3>
+                            <span class="text-blue-500 text-xs font-medium">编辑</span>
+                        </div>
+                        <div class="flex items-center gap-4 mb-5">
+                            <img src="https://placehold.co/100x100/3B82F6/FFFFFF?text=XM" class="w-14 h-14 rounded-full border-2 border-blue-50 shadow-sm">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-gray-800">张小明</span>
+                                    <i class="fas fa-mars text-blue-400 text-xs"></i>
+                                    <span class="text-xs text-gray-400">| 28岁 | 男</span>
+                                </div>
+                                <div class="flex gap-2 mt-2">
+                                    <span class="bg-blue-50 text-blue-500 px-2 py-0.5 rounded text-[10px]">牙龈出血</span>
+                                    <span class="bg-blue-50 text-blue-500 px-2 py-0.5 rounded text-[10px]">牙齿敏感</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-gray-400">上次更新：2026-05-10</p>
+                    </div>
+
+                    <!-- 功能网格 -->
+                    <div class="grid grid-cols-4 gap-y-6 mb-8">
+                        ${[
+                            {icon: 'fa-tooth', color: 'bg-blue-500', label: 'AI智能诊断'},
+                            {icon: 'fa-clipboard-check', color: 'bg-green-500', label: '症状自检'},
+                            {icon: 'fa-calendar-alt', color: 'bg-orange-500', label: '拍片预约'},
+                            {icon: 'fa-comments', color: 'bg-purple-500', label: '在线问诊'},
+                            {icon: 'fa-user-md', color: 'bg-teal-500', label: '找医生'},
+                            {icon: 'fa-book-open', color: 'bg-red-400', label: '口腔科普'},
+                            {icon: 'fa-bell', color: 'bg-yellow-500', label: '用药提醒'},
+                            {icon: 'fa-file-alt', color: 'bg-blue-400', label: '我的报告'}
+                        ].map(item => `
+                            <div class="flex flex-col items-center gap-2 cursor-pointer active:opacity-60 transition-opacity">
+                                <div class="w-12 h-12 ${item.color} rounded-2xl flex items-center justify-center text-white shadow-lg shadow-${item.color.split('-')[1]}-100">
+                                    <i class="fas ${item.icon} text-lg"></i>
+                                </div>
+                                <span class="text-[11px] text-gray-600 font-medium">${item.label}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <!-- 今日推荐 -->
+                    <div class="mb-4 flex justify-between items-center">
+                        <h3 class="font-bold text-lg text-gray-800">今日推荐</h3>
+                        <span class="text-gray-400 text-xs">更多 <i class="fas fa-chevron-right text-[10px]"></i></span>
+                    </div>
+                    <div class="space-y-4 mb-6">
+                        <div class="bg-white rounded-2xl p-3 flex gap-4 shadow-sm border border-gray-50">
+                            <img src="https://placehold.co/240x160/E0F2FE/3B82F6?text=Brush+Teeth" class="w-32 h-24 rounded-xl object-cover">
+                            <div class="flex flex-col justify-between py-1">
+                                <h4 class="font-bold text-sm leading-tight">如何正确刷牙，保护牙齿健康？</h4>
+                                <p class="text-[10px] text-gray-400 line-clamp-2">掌握正确的刷牙方法，有效预防龋齿和牙龈疾病。</p>
+                                <span class="text-[10px] bg-blue-50 text-blue-500 px-2 py-0.5 rounded w-fit">口腔护理</span>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-2xl p-3 flex gap-4 shadow-sm border border-gray-50">
+                            <img src="https://placehold.co/240x160/FEF3C7/D97706?text=Sensitive" class="w-32 h-24 rounded-xl object-cover">
+                            <div class="flex flex-col justify-between py-1">
+                                <h4 class="font-bold text-sm leading-tight">牙齿敏感怎么办？这些方法帮你缓解</h4>
+                                <p class="text-[10px] text-gray-400 line-clamp-2">了解牙齿敏感的原因，尝试这些方法有效缓解不适。</p>
+                                <span class="text-[10px] bg-blue-50 text-blue-500 px-2 py-0.5 rounded w-fit">牙齿敏感</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+            diagnosis: `
+                <!-- AI诊断聊天 (参考 微信图片_20260512103126_1115_4565.png) -->
+                <div class="flex flex-col h-[calc(100vh-140px)] animate-fade-in">
+                    <div class="p-4 border-b border-gray-100 bg-white flex justify-between items-center sticky top-0 z-10">
+                        <i class="fas fa-chevron-left text-gray-800" onclick="switchPage('home')"></i>
+                        <h2 class="font-bold">AI智能诊断助手</h2>
+                        <i class="fas fa-phone-alt text-blue-500"></i>
+                    </div>
+                    
+                    <div class="flex-1 overflow-y-auto p-5 space-y-6 hide-scrollbar" id="chat-container">
+                        <p class="text-center text-[10px] text-gray-400">描述您的口腔问题，AI将为您初步分析</p>
+                        
+                        <!-- AI 消息 -->
+                        <div class="flex gap-3">
+                            <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white shrink-0 shadow-md">
+                                <i class="fas fa-tooth text-sm"></i>
+                            </div>
+                            <div class="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm max-w-[80%]">
+                                <p class="text-sm text-gray-700 leading-relaxed">您好！我是您的AI口腔健康助手，请描述您的症状或上传口腔照片，我将为您提供初步分析和建议。</p>
+                            </div>
+                        </div>
+
+                        <!-- 建议问题 -->
+                        <div class="pl-13 space-y-3">
+                            <p class="text-xs text-gray-400">您可以这样问我：</p>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="bg-blue-50 text-blue-500 px-3 py-1.5 rounded-full text-xs border border-blue-100" onclick="sendMessage('牙疼怎么办')">牙疼怎么办</span>
+                                <span class="bg-blue-50 text-blue-500 px-3 py-1.5 rounded-full text-xs border border-blue-100" onclick="sendMessage('牙龈出血原因')">牙龈出血原因</span>
+                                <span class="bg-blue-50 text-blue-500 px-3 py-1.5 rounded-full text-xs border border-blue-100" onclick="sendMessage('智齿要不要拔')">智齿要不要拔</span>
+                            </div>
+                        </div>
+
+                        <!-- 用户消息 (已发送) -->
+                        <div class="flex gap-3 justify-end">
+                            <div class="bg-blue-500 p-4 rounded-2xl rounded-tr-none shadow-md max-w-[80%] text-white">
+                                <p class="text-sm leading-relaxed">我的右下方后槽牙最近吃东西很疼，尤其是吃冷的和热的，疼了大概一周了</p>
+                            </div>
+                            <img src="https://placehold.co/100x100/3B82F6/FFFFFF?text=XM" class="w-10 h-10 rounded-full shrink-0">
+                        </div>
+
+                        <!-- AI 响应 -->
+                        <div class="flex gap-3">
+                            <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white shrink-0 shadow-md">
+                                <i class="fas fa-tooth text-sm"></i>
+                            </div>
+                            <div class="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm max-w-[80%]">
+                                <p class="text-sm font-bold mb-2">根据您的描述，可能存在以下问题：</p>
+                                <ul class="text-sm text-gray-600 space-y-2">
+                                    <li>1. 龋齿（蛀牙）：牙齿硬组织被细菌侵蚀，遇冷、热刺激时产生疼痛。</li>
+                                    <li>2. 牙髓炎：牙髓组织发炎，常表现为自发性疼痛或刺激痛。</li>
+                                </ul>
+                                <p class="text-sm text-gray-600 mt-3">建议您上传患处照片，我可以为您进一步分析。</p>
+                                <button onclick="switchPage('diagnosis_result')" class="mt-4 text-blue-500 text-xs font-bold flex items-center gap-1">查看详情 <i class="fas fa-chevron-right text-[10px]"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 输入框 -->
+                    <div class="p-4 bg-white border-t border-gray-100 flex items-center gap-3">
+                        <div class="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        <div class="flex-1 bg-gray-50 rounded-full px-4 py-2 flex items-center">
+                            <input type="text" placeholder="请描述您的症状..." class="bg-transparent w-full outline-none text-sm py-1">
+                            <i class="fas fa-camera text-gray-400"></i>
+                        </div>
+                        <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-200">
+                            <i class="fas fa-paper-plane text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+            `,
+            diagnosis_result: `
+                <!-- 诊断结果 (参考 微信图片_20260512103125_1114_4565.png) -->
+                <div class="px-5 pb-10 animate-fade-in bg-gray-50">
+                    <div class="py-4 flex items-center justify-between">
+                        <i class="fas fa-chevron-left text-gray-800" onclick="switchPage('diagnosis')"></i>
+                        <h2 class="font-bold text-lg">诊断结果</h2>
+                        <i class="fas fa-share-alt text-gray-800"></i>
+                    </div>
+                    
+                    <div class="flex justify-center mb-6">
+                        <span class="flex items-center gap-1 text-green-500 text-xs font-bold bg-green-50 px-3 py-1 rounded-full">
+                            <i class="fas fa-check-circle"></i> 已完成AI分析
+                        </span>
+                    </div>
+
+                    <!-- 进度条背景线 -->
+                    <div class="h-1 bg-green-500 w-full rounded-full mb-8"></div>
+
+                    <!-- 可能病因 -->
+                    <div class="bg-white rounded-3xl p-5 shadow-sm mb-4 relative overflow-hidden">
+                        <img src="https://placehold.co/200x200/F0F9FF/3B82F6?text=🦷" class="absolute -right-6 -top-6 w-32 h-32 opacity-20">
+                        <div class="flex items-center gap-2 mb-4">
+                            <i class="fas fa-exclamation-triangle text-red-500"></i>
+                            <h3 class="font-bold">可能病因</h3>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm font-medium">1. 深龋 (可能性 <span class="text-red-500">72%</span>)</span>
+                                <span class="text-[10px] bg-red-50 text-red-500 px-2 py-0.5 rounded border border-red-100">高概率</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm font-medium">2. 牙髓炎 (可能性 <span class="text-orange-500">55%</span>)</span>
+                                <span class="text-[10px] bg-orange-50 text-orange-500 px-2 py-0.5 rounded border border-orange-100">中等概率</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm font-medium">3. 牙隐裂 (可能性 <span class="text-green-500">23%</span>)</span>
+                                <span class="text-[10px] bg-green-50 text-green-500 px-2 py-0.5 rounded border border-green-100">低概率</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 严重程度 -->
+                    <div class="bg-white rounded-3xl p-5 shadow-sm mb-4">
+                        <div class="flex items-center gap-2 mb-6">
+                            <i class="fas fa-shield-alt text-blue-500"></i>
+                            <h3 class="font-bold">严重程度评估</h3>
+                        </div>
+                        <div class="px-2">
+                            <div class="severity-slider mb-2">
+                                <div class="severity-pointer">
+                                    <i class="fas fa-map-marker-alt text-orange-500 text-xl"></i>
+                                </div>
+                            </div>
+                            <div class="flex justify-between text-xs text-gray-400 mt-6">
+                                <span>轻度</span>
+                                <span>中度</span>
+                                <span>严重</span>
+                            </div>
+                        </div>
+                        <button class="w-full mt-6 bg-gray-50 text-gray-500 py-2.5 rounded-xl text-sm font-medium">建议尽快就医处理</button>
+                    </div>
+
+                    <!-- AI 建议方案 -->
+                    <div class="bg-white rounded-3xl p-5 shadow-sm mb-4">
+                        <div class="flex items-center gap-2 mb-5">
+                            <i class="fas fa-clipboard-list text-blue-500"></i>
+                            <h3 class="font-bold">AI建议方案</h3>
+                        </div>
+                        <div class="space-y-6">
+                            <div class="flex gap-4">
+                                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-500 shrink-0">
+                                    <i class="fas fa-check text-xs"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="font-bold text-sm mb-2">立即处理</h4>
+                                    <ul class="text-[11px] text-gray-500 space-y-1 list-disc pl-3">
+                                        <li>避免食用过冷、过热、辛辣刺激性食物</li>
+                                        <li>可用温盐水漱口，保持口腔清洁</li>
+                                        <li>如疼痛明显，可遵医嘱使用止痛药</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="flex gap-4">
+                                <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-500 shrink-0">
+                                    <i class="fas fa-flag text-xs"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="font-bold text-sm mb-2">就医建议</h4>
+                                    <ul class="text-[11px] text-gray-500 space-y-1 list-disc pl-3">
+                                        <li>建议尽快到正规口腔机构进行详细检查</li>
+                                        <li>进行口腔检查及X光片检查，明确病因</li>
+                                        <li>根据检查结果制定针对性治疗方案</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 免责声明 -->
+                    <div class="bg-gray-100/50 p-4 rounded-2xl mb-6">
+                        <div class="flex gap-2 text-gray-400">
+                            <i class="fas fa-shield-alt text-xs mt-1"></i>
+                            <p class="text-[10px] leading-relaxed">免责声明：以上结果仅供参考，不构成医疗诊断。请以医生面诊诊断为准。</p>
+                        </div>
+                    </div>
+
+                    <!-- 推荐医生 -->
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-gray-800">推荐附近医生</h3>
+                        <span class="text-gray-400 text-xs">查看更多 <i class="fas fa-chevron-right text-[10px]"></i></span>
+                    </div>
+                    <div class="bg-white rounded-3xl p-4 flex gap-4 shadow-sm">
+                        <img src="https://placehold.co/100x100/3B82F6/FFFFFF?text=Dr+Li" class="w-20 h-20 rounded-2xl object-cover shrink-0 shadow-sm">
+                        <div class="flex-1 relative">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="font-bold">李明医生</span>
+                                <span class="text-[10px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded">主治医师</span>
+                            </div>
+                            <p class="text-[10px] text-gray-400 mb-2">口腔全科 | 从业8年</p>
+                            <p class="text-[10px] text-gray-500 leading-tight mb-2 line-clamp-1">擅长：龋齿治疗、牙髓炎、根管治疗、牙周治疗</p>
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center gap-1">
+                                    <div class="flex text-yellow-400 text-[10px]">
+                                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                                    </div>
+                                    <span class="text-[10px] text-gray-400">4.9 | 1.2km</span>
+                                </div>
+                                <button onclick="switchPage('booking')" class="bg-blue-500 text-white text-[10px] px-3 py-1.5 rounded-lg shadow-lg shadow-blue-100 font-bold active:scale-95">立即预约</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+            find: `
+                <!-- 找医生 (参考 微信图片_20260512103123_1113_4565.png) -->
+                <div class="animate-fade-in pb-10">
+                    <div class="bg-white px-5 pb-4 sticky top-12 z-20">
+                        <div class="flex items-center gap-4 py-2">
+                             <i class="fas fa-chevron-left text-gray-800" onclick="switchPage('home')"></i>
+                             <div class="flex-1 bg-gray-100 rounded-full flex items-center px-4 py-2">
+                                <i class="fas fa-search text-gray-400 mr-2"></i>
+                                <input type="text" placeholder="搜索医生姓名或科室" class="bg-transparent w-full outline-none text-sm">
+                            </div>
+                        </div>
+                        
+                        <!-- 分类导航 -->
+                        <div class="flex gap-3 overflow-x-auto mt-4 hide-scrollbar">
+                            <span class="bg-blue-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap">全部</span>
+                            <span class="bg-white border border-gray-100 text-gray-500 px-4 py-1.5 rounded-lg text-xs whitespace-nowrap">牙体牙髓</span>
+                            <span class="bg-white border border-gray-100 text-gray-500 px-4 py-1.5 rounded-lg text-xs whitespace-nowrap">口腔修复</span>
+                            <span class="bg-white border border-gray-100 text-gray-500 px-4 py-1.5 rounded-lg text-xs whitespace-nowrap">正畸</span>
+                            <span class="bg-white border border-gray-100 text-gray-500 px-4 py-1.5 rounded-lg text-xs whitespace-nowrap">种植</span>
+                        </div>
+                    </div>
+
+                    <!-- 诊断推荐横向滑块 -->
+                    <div class="px-5 mt-6 mb-8">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold">根据您的诊断推荐</h3>
+                            <div class="flex items-center gap-1 text-[10px] text-gray-400">
+                                <span>AI智能匹配</span>
+                                <i class="far fa-question-circle"></i>
+                            </div>
+                        </div>
+                        <div class="flex gap-4 overflow-x-auto hide-scrollbar snap-x">
+                            ${[
+                                {name: '李明医生', title: '副主任医师', hospital: '北京大学口腔医院', tags: ['根管治疗', '龋齿修复']},
+                                {name: '张雅医生', title: '副主任医师', hospital: '上海交通大学医学院附属第九人民医院', tags: ['牙体治疗', '美学修复']}
+                            ].map(doc => `
+                                <div class="bg-white rounded-3xl p-4 shadow-sm border border-gray-50 shrink-0 w-64 snap-center relative">
+                                    <span class="absolute top-4 left-4 bg-blue-100 text-blue-500 text-[10px] px-2 py-0.5 rounded-full font-bold">推荐</span>
+                                    <div class="flex flex-col items-center mb-4">
+                                        <img src="https://placehold.co/120x120/3B82F6/FFFFFF?text=${doc.name[0]}" class="w-16 h-16 rounded-full border-2 border-blue-50 shadow-sm mb-3">
+                                        <h4 class="font-bold">${doc.name}</h4>
+                                        <p class="text-[10px] text-gray-400">${doc.title}</p>
+                                        <p class="text-[10px] text-gray-400 text-center px-4 leading-tight">${doc.hospital}</p>
+                                    </div>
+                                    <div class="flex justify-center gap-2 mb-4">
+                                        ${doc.tags.map(tag => `<span class="bg-blue-50 text-blue-500 px-2 py-0.5 rounded text-[10px]">${tag}</span>`).join('')}
+                                    </div>
+                                    <div class="flex justify-center gap-1 text-yellow-400 text-[10px] mb-2">
+                                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                                        <span class="text-gray-400 ml-1">4.9分</span>
+                                    </div>
+                                    <div class="text-center text-[10px] text-gray-400 mb-4">326条评价 | 距您 2.3km</div>
+                                    <div class="flex gap-3">
+                                        <button class="flex-1 text-gray-400 text-xs py-2">查看详情 <i class="fas fa-chevron-right text-[10px]"></i></button>
+                                        <button onclick="switchPage('booking')" class="flex-1 bg-blue-500 text-white text-xs py-2 rounded-lg font-bold shadow-lg shadow-blue-100">立即预约</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- 附近列表 -->
+                    <div class="px-5">
+                         <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold">附近牙科医生</h3>
+                            <div class="flex items-center gap-1 text-[10px] text-gray-400">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <span>北京市</span>
+                            </div>
+                        </div>
+                        <div class="space-y-6">
+                            ${[
+                                {name: '李明医生', title: '副主任医师', hospital: '北京大学口腔医院', score: 4.9, dist: '2.3km', tags: ['根管治疗', '龋齿修复', '牙体治疗']},
+                                {name: '张雅医生', title: '副主任医师', hospital: '上海九院', score: 4.8, dist: '3.1km', tags: ['牙体治疗', '美学修复', '显微根管']}
+                            ].map(doc => `
+                                <div class="flex gap-4">
+                                    <img src="https://placehold.co/100x100/3B82F6/FFFFFF?text=${doc.name[0]}" class="w-14 h-14 rounded-full shadow-sm">
+                                    <div class="flex-1">
+                                        <div class="flex justify-between">
+                                            <div class="flex items-center gap-2">
+                                                <span class="font-bold text-sm">${doc.name}</span>
+                                                <span class="text-xs text-blue-500">${doc.title}</span>
+                                            </div>
+                                            <div class="flex flex-col items-end">
+                                                <span class="text-yellow-400 text-xs font-bold"><i class="fas fa-star"></i> ${doc.score}分</span>
+                                                <span class="text-[10px] text-gray-400">${doc.dist}</span>
+                                            </div>
+                                        </div>
+                                        <p class="text-[10px] text-gray-400 mt-1">${doc.hospital}</p>
+                                        <div class="flex gap-2 mt-2">
+                                            ${doc.tags.map(tag => `<span class="bg-blue-50 text-blue-500 px-2 py-0.5 rounded text-[9px]">${tag}</span>`).join('')}
+                                        </div>
+                                        <button onclick="switchPage('booking')" class="w-full mt-4 bg-blue-500 text-white text-xs py-2 rounded-lg font-bold">预约</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <p class="text-center text-gray-300 text-[10px] py-10">没有更多了</p>
+                    </div>
+                </div>
+            `,
+            booking: `
+                <!-- 预约流程 (参考 微信图片_20260512103825_1124_4565.png) -->
+                <div class="animate-fade-in bg-white min-h-screen">
+                    <div class="px-5 pt-4 flex items-center justify-between">
+                        <i class="fas fa-chevron-left text-gray-800" onclick="switchPage('find')"></i>
+                        <h2 class="font-bold text-lg">预约挂号</h2>
+                        <div class="w-6"></div>
+                    </div>
+
+                    <!-- 步骤条 -->
+                    <div class="flex justify-center items-center py-10 px-8">
+                        <div class="flex flex-col items-center gap-2 relative">
+                            <div class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center relative z-10">
+                                <i class="fas fa-check text-xs"></i>
+                            </div>
+                            <span class="text-xs text-gray-400">选择医生</span>
+                            <div class="absolute w-20 h-0.5 bg-blue-500 left-8 top-4"></div>
+                        </div>
+                        <div class="flex flex-col items-center gap-2 relative mx-16">
+                            <div class="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center relative z-10 border-4 border-blue-100 shadow-lg">2</div>
+                            <span class="text-xs text-blue-500 font-bold">选择时间</span>
+                            <div class="absolute w-20 h-0.5 bg-gray-200 left-8 top-4"></div>
+                        </div>
+                        <div class="flex flex-col items-center gap-2 relative">
+                            <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center relative z-10">3</div>
+                            <span class="text-xs text-gray-400">确认支付</span>
+                        </div>
+                    </div>
+
+                    <div class="px-5 space-y-6">
+                        <!-- 医生信息 -->
+                        <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-50 flex gap-4">
+                            <img src="https://placehold.co/100x100/3B82F6/FFFFFF?text=Dr+Zhang" class="w-16 h-16 rounded-2xl object-cover shadow-sm">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-lg">张医生</span>
+                                    <span class="text-xs text-gray-400">副主任医师</span>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-1">上海市第六人民医院 骨科</p>
+                                <div class="flex items-center gap-2 mt-2">
+                                    <span class="text-yellow-400 text-xs"><i class="fas fa-star"></i> 4.9分</span>
+                                    <span class="text-xs text-gray-400">| <i class="fas fa-map-marker-alt ml-1"></i> 2.3km</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 服务类型 -->
+                        <div>
+                            <h3 class="font-bold mb-4">选择服务类型</h3>
+                            <div class="grid grid-cols-3 gap-3">
+                                <div class="border-2 border-blue-500 bg-blue-50 rounded-2xl p-4 flex flex-col items-center gap-2 text-blue-500">
+                                    <i class="fas fa-comment-dots text-xl"></i>
+                                    <span class="text-xs font-bold">挂号问诊</span>
+                                </div>
+                                <div class="border border-gray-100 rounded-2xl p-4 flex flex-col items-center gap-2 text-gray-400">
+                                    <i class="fas fa-x-ray text-xl"></i>
+                                    <span class="text-xs">拍片检查</span>
+                                </div>
+                                <div class="border border-gray-100 rounded-2xl p-4 flex flex-col items-center gap-2 text-gray-400">
+                                    <div class="flex gap-1"><i class="fas fa-comment-dots"></i>+<i class="fas fa-x-ray"></i></div>
+                                    <span class="text-xs">挂号+拍片</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 日期选择 -->
+                        <div>
+                            <h3 class="font-bold mb-4">选择日期</h3>
+                            <div class="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
+                                ${['周六\n5.24', '周日\n5.25', '周一\n5.26', '周二\n5.27', '周三\n5.28', '周四\n5.29'].map((date, i) => `
+                                    <div class="${i === 1 ? 'bg-blue-500 text-white shadow-lg shadow-blue-100 border-none' : 'bg-white border border-gray-100 text-gray-600'} rounded-full w-14 h-14 shrink-0 flex flex-col items-center justify-center text-[10px] relative">
+                                        <p class="whitespace-pre-line text-center font-medium">${date}</p>
+                                        ${i === 1 ? '<div class="absolute -bottom-2 w-1 h-1 bg-red-500 rounded-full"></div>' : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- 时段选择 -->
+                        <div>
+                             <h3 class="font-bold mb-3">选择时段</h3>
+                             <p class="text-xs text-gray-400 mb-4">上午</p>
+                             <div class="grid grid-cols-4 gap-3 mb-6">
+                                <span class="border border-blue-500 text-blue-500 rounded-lg py-2.5 text-xs text-center font-medium">08:30</span>
+                                <span class="bg-blue-500 text-white rounded-lg py-2.5 text-xs text-center font-bold">09:00</span>
+                                <span class="border border-blue-500 text-blue-500 rounded-lg py-2.5 text-xs text-center font-medium">09:30</span>
+                                <span class="bg-gray-50 text-gray-300 rounded-lg py-2.5 text-xs text-center flex flex-col gap-0.5">10:00<span class="text-[8px]">已约满</span></span>
+                             </div>
+                             <p class="text-xs text-gray-400 mb-4">下午</p>
+                             <div class="grid grid-cols-4 gap-3">
+                                <span class="border border-blue-500 text-blue-500 rounded-lg py-2.5 text-xs text-center font-medium">13:30</span>
+                                <span class="border border-blue-500 text-blue-500 rounded-lg py-2.5 text-xs text-center font-medium">14:00</span>
+                                <span class="border border-blue-500 text-blue-500 rounded-lg py-2.5 text-xs text-center font-medium">14:30</span>
+                                <span class="bg-gray-50 text-gray-300 rounded-lg py-2.5 text-xs text-center flex flex-col gap-0.5">15:00<span class="text-[8px]">已约满</span></span>
+                             </div>
+                        </div>
+
+                        <!-- 补充描述 -->
+                        <div>
+                            <h3 class="font-bold mb-4">补充描述 <span class="font-normal text-gray-400 text-xs">(选填)</span></h3>
+                            <div class="bg-gray-50 rounded-2xl p-4 min-h-[100px] relative">
+                                <textarea placeholder="请简要描述您的症状或需求..." class="bg-transparent w-full outline-none text-xs resize-none"></textarea>
+                                <span class="absolute bottom-4 right-4 text-[10px] text-gray-300">0/200</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 底部确认按钮 -->
+                    <div class="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-5 bg-white border-t border-gray-50 safe-area-inset-bottom flex items-center justify-between z-40">
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-xs text-gray-400">挂号费：</span>
+                            <span class="text-red-500 font-bold text-xl">¥50</span>
+                        </div>
+                        <button onclick="alert('预约申请已提交！')" class="bg-blue-500 text-white px-12 py-3.5 rounded-full font-bold shadow-xl shadow-blue-200 active:scale-95 transition-transform">确认预约</button>
+                    </div>
+                </div>
+            `,
+            profile: `
+                <!-- 我的 (参考 微信图片_20260512104521_1129_4565.png) -->
+                <div class="animate-fade-in bg-gray-50">
+                    <!-- 蓝色背景头 -->
+                    <div class="bg-gradient-to-b from-blue-500 to-blue-400 px-6 pt-10 pb-20 relative">
+                        <div class="flex justify-end gap-5 text-white text-lg mb-6 relative">
+                            <div class="relative">
+                                <i class="far fa-bell"></i>
+                                <span class="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center border-2 border-blue-400">3</span>
+                            </div>
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="relative mb-3">
+                                <img src="https://placehold.co/150x150/FFFFFF/3B82F6?text=ZS" class="w-20 h-20 rounded-full border-4 border-blue-300 shadow-lg">
+                                <div class="absolute bottom-0 right-0 bg-white w-6 h-6 rounded-full flex items-center justify-center text-[10px] text-blue-500 shadow">
+                                    <i class="fas fa-camera"></i>
+                                </div>
+                            </div>
+                            <h2 class="text-white text-xl font-bold mb-1">张三</h2>
+                            <p class="text-blue-100 text-xs mb-3">138****5678</p>
+                            <div class="bg-orange-100/30 text-white px-3 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-sm border border-white/20">
+                                <i class="fas fa-crown text-yellow-300 text-[10px]"></i>
+                                <span class="text-[10px] font-bold">口腔健康会员</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-5 -mt-10 space-y-4 pb-20">
+                        <!-- 我的健康数据 -->
+                        <div class="bg-white rounded-3xl p-5 shadow-sm">
+                            <h3 class="font-bold text-gray-800 mb-4">我的健康数据</h3>
+                            <div class="grid grid-cols-3 divide-x divide-gray-100 mb-6">
+                                <div class="flex flex-col items-center">
+                                    <span class="text-2xl font-bold text-blue-500">12</span>
+                                    <span class="text-[10px] text-gray-400">AI诊断</span>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <span class="text-2xl font-bold text-green-500">5</span>
+                                    <span class="text-[10px] text-gray-400">已预约</span>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <span class="text-2xl font-bold text-orange-500">186</span>
+                                    <span class="text-[10px] text-gray-400">健康天数</span>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 rounded-xl p-3">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-[10px] text-gray-400">口腔健康评分</span>
+                                    <span class="text-[10px] font-bold text-green-500 bg-green-50 px-2 py-0.5 rounded-full">78分 优秀</span>
+                                </div>
+                                <div class="h-2 bg-gray-200 rounded-full overflow-hidden flex">
+                                    <div class="bg-red-400 w-1/4"></div>
+                                    <div class="bg-orange-400 w-1/4"></div>
+                                    <div class="bg-yellow-400 w-1/4"></div>
+                                    <div class="bg-green-500 w-[18%]"></div>
+                                    <div class="bg-gray-100 flex-1 relative">
+                                        <div class="absolute right-0 top-0 w-4 h-4 bg-green-500 rounded-full -translate-y-1 shadow-md border-2 border-white"></div>
+                                    </div>
+                                </div>
+                                <p class="text-[9px] text-gray-400 mt-2">上次诊断：深度龋齿风险 · 2026-05-10</p>
+                            </div>
+                        </div>
+
+                        <!-- 我的订单 -->
+                        <div class="bg-white rounded-3xl p-5 shadow-sm">
+                            <div class="flex justify-between items-center mb-5">
+                                <h3 class="font-bold">我的订单</h3>
+                                <span class="text-gray-400 text-[10px]">查看全部 <i class="fas fa-chevron-right text-[8px]"></i></span>
+                            </div>
+                            <div class="flex justify-around">
+                                ${[
+                                    {icon: 'fa-wallet', label: '待付款', badge: 1, color: 'text-blue-500'},
+                                    {icon: 'fa-calendar-check', label: '待就诊', badge: 2, color: 'text-orange-500'},
+                                    {icon: 'fa-check-circle', label: '已完成', badge: 0, color: 'text-green-500'},
+                                    {icon: 'fa-history', label: '退款/售后', badge: 0, color: 'text-blue-400'}
+                                ].map(item => `
+                                    <div class="flex flex-col items-center gap-2 relative">
+                                        <div class="w-10 h-10 flex items-center justify-center text-xl ${item.color}">
+                                            <i class="fas ${item.icon}"></i>
+                                        </div>
+                                        <span class="text-[10px] text-gray-600">${item.label}</span>
+                                        ${item.badge ? `<span class="absolute top-0 right-0 bg-red-500 text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white">${item.badge}</span>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- 健康管理列表 -->
+                        <div class="bg-white rounded-3xl overflow-hidden shadow-sm">
+                            <div class="p-5 font-bold border-b border-gray-50">健康管理</div>
+                            ${[
+                                {icon: 'fa-robot', label: '诊断历史', value: '12次记录', color: 'text-blue-500'},
+                                {icon: 'fa-file-medical', label: '我的报告', value: '3份报告', color: 'text-green-500'},
+                                {icon: 'fa-user-circle', label: '健康档案', value: '已完善', color: 'text-red-400', valueClass: 'text-green-500'},
+                                {icon: 'fa-search', label: '口腔自检记录', value: '最近：05-10', color: 'text-orange-500'},
+                                {icon: 'fa-capsules', label: '用药提醒', value: '1个提醒', color: 'text-purple-500'}
+                            ].map(item => `
+                                <div class="px-5 py-4 flex items-center justify-between active:bg-gray-50">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-full flex items-center justify-center bg-gray-50 ${item.color}">
+                                            <i class="fas ${item.icon} text-sm"></i>
+                                        </div>
+                                        <span class="text-xs font-medium text-gray-700">${item.label}</span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-[10px] ${item.valueClass || 'text-gray-300'}">${item.value}</span>
+                                        <i class="fas fa-chevron-right text-[8px] text-gray-300"></i>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <!-- 会员 Banner -->
+                        <div class="bg-gradient-to-r from-orange-50 to-orange-100 rounded-2xl p-4 border border-orange-200 flex justify-between items-center shadow-sm">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-orange-400 shadow-inner">
+                                    <i class="fas fa-crown"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-orange-800">口腔健康会员</h4>
+                                    <p class="text-[8px] text-orange-600 mt-0.5">专享AI深度诊断 · 优先预约 · 免费拍片1次/年</p>
+                                </div>
+                            </div>
+                            <button class="bg-orange-400 text-white text-[10px] px-4 py-1.5 rounded-full font-bold shadow-lg shadow-orange-200">立即续费</button>
+                        </div>
+                    </div>
+                </div>
+            `
+        };
+
+        // 导航控制逻辑
+        let currentPage = 'splash';
+
+        function switchPage(pageId) {
+            const content = document.getElementById('main-content');
+            content.style.opacity = '0';
+            
+            setTimeout(() => {
+                currentPage = pageId;
+                content.innerHTML = pages[pageId];
+                content.style.opacity = '1';
+                
+                // 更新导航栏状态
+                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                const navBtn = document.getElementById(`nav-${pageId}`);
+                if (navBtn) navBtn.classList.add('active');
+
+                // 如果是特殊页面（如启动页、预约页），隐藏导航栏
+                const nav = document.querySelector('nav');
+                if (pageId === 'splash' || pageId === 'booking') {
+                    nav.style.display = 'none';
+                } else {
+                    nav.style.display = 'flex';
+                }
+
+                // 滚动到顶部
+                window.scrollTo(0, 0);
+            }, 200);
+        }
+
+        // 模拟发送消息交互
+        function sendMessage(text) {
+             const container = document.getElementById('chat-container');
+             const userMsg = `
+                <div class="flex gap-3 justify-end animate-fade-in">
+                    <div class="bg-blue-500 p-4 rounded-2xl rounded-tr-none shadow-md max-w-[80%] text-white">
+                        <p class="text-sm leading-relaxed">${text}</p>
+                    </div>
+                    <img src="https://placehold.co/100x100/3B82F6/FFFFFF?text=XM" class="w-10 h-10 rounded-full shrink-0">
+                </div>
+             `;
+             container.innerHTML += userMsg;
+             container.scrollTop = container.scrollHeight;
+
+             // 模拟 AI 回复
+             setTimeout(() => {
+                 const aiMsg = `
+                    <div class="flex gap-3 animate-fade-in">
+                        <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white shrink-0 shadow-md">
+                            <i class="fas fa-tooth text-sm"></i>
+                        </div>
+                        <div class="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm max-w-[80%]">
+                            <p class="text-sm text-gray-700 leading-relaxed">正在为您分析关于“${text}”的问题...</p>
+                        </div>
+                    </div>
+                 `;
+                 container.innerHTML += aiMsg;
+                 container.scrollTop = container.scrollHeight;
+             }, 800);
+        }
+
+        // 初始页面渲染
+        window.onload = () => {
+            switchPage('splash');
+        };
+    </script>
+
+    <style>
+        /* 动画定义 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        /* 隐藏滚动条但保留功能 */
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* snaps */
+        .snap-x {
+            scroll-snap-type: x mandatory;
+        }
+        .snap-center {
+            scroll-snap-align: center;
+        }
+        
+        .pl-13 { padding-left: 3.25rem; }
+    </style>
+</body>
+</html>
