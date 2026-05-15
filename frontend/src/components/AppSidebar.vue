@@ -99,7 +99,7 @@ function isActive(path: string) {
 <template>
   <div class="app-sidebar">
     <RouterLink class="app-sidebar-brand" to="/">
-      <div class="app-sidebar-logo">智</div>
+      <img class="app-sidebar-logo" src="/Gemini_Generated_Image_mabdnnmabdnnmabd.png" alt="智齿 AI" />
       <div v-if="!props.collapsed" class="app-sidebar-brand-text">
         <strong>智齿 AI</strong>
         <span>牙齿影像智能诊断系统</span>

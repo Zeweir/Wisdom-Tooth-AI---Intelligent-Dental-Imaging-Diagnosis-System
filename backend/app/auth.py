@@ -51,8 +51,8 @@ RBAC_ROLE_DEFINITIONS: tuple[RoleDefinition, ...] = (
     RoleDefinition(
         key='chief_doctor',
         label='主任医生',
-        description='可查看影像、审核并正式确认报告。',
-        scopes=('read:images', 'review:reports', 'finalize:reports'),
+        description='拥有全部权限：上传影像、查看分析、审核报告、正式确认。',
+        scopes=('read:images', 'upload:images', 'review:reports', 'finalize:reports'),
     ),
 )
 

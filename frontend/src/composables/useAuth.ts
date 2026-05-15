@@ -1,15 +1,14 @@
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { getAuthProfile, getRbacModel, login as loginApi } from '../api/auth'
 import { getStoredToken, setStoredToken } from '../api/http'
 import type { AuthProfile, RbacModel, UserInfo } from '../types/auth'
 
 const authReady = ref(false)
 const isLoading = ref(false)
+const isAuthenticated = ref(!!getStoredToken())
 const user = ref<UserInfo | null>(null)
 const authProfile = ref<AuthProfile | null>(null)
 const rbacModel = ref<RbacModel | null>(null)
-
-const isAuthenticated = computed(() => !!getStoredToken())
 
 export function useAuth() {
   async function login(username: string, password: string) {
@@ -18,6 +17,7 @@ export function useAuth() {
       const response = await loginApi(username, password)
       setStoredToken(response.access_token)
       user.value = response.user
+      isAuthenticated.value = true
       authReady.value = true
       return response
     } finally {
@@ -27,6 +27,7 @@ export function useAuth() {
 
   function logout() {
     setStoredToken(null)
+    isAuthenticated.value = false
     user.value = null
     authProfile.value = null
     rbacModel.value = null

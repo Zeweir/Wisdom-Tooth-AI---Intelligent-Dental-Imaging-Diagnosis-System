@@ -155,14 +155,11 @@
 }
 
 .app-sidebar-logo {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
+  width: 40px;
+  height: 40px;
   border-radius: var(--medical-radius-sm);
-  color: #fff;
-  background: linear-gradient(135deg, var(--medical-primary), #0ea5e9);
-  font-weight: 900;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .app-sidebar-brand-text {

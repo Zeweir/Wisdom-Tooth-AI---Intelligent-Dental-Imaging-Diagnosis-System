@@ -41,7 +41,7 @@ export interface WorkbenchContext {
   dashboardSummary: Ref<DashboardSummary | null>
   filters: Ref<AnalysisFilters>
   recordsPagination: Ref<PaginationMeta>
-  isAuthenticated: ComputedRef<boolean>
+  isAuthenticated: Ref<boolean>
   isLoading: Ref<boolean>
   currentRecord: ComputedRef<AnalysisItem | null>
   visibleMenus: ComputedRef<MenuCapability[]>

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
 
 *,
 *::before,
@@ -11,7 +11,6 @@ html {
   min-height: 100%;
   overflow-x: hidden;
   overflow-y: scroll;
-  scrollbar-gutter: stable;
 }
 
 body {
@@ -19,13 +18,11 @@ body {
   min-width: 320px;
   min-height: 100vh;
   overflow-x: hidden;
-  font-family: 'Plus Jakarta Sans', 'Noto Sans SC', sans-serif;
+  font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
   color: var(--medical-text);
-  background:
-    radial-gradient(circle at 6% 0%, rgba(8, 145, 178, 0.13), transparent 30%),
-    radial-gradient(circle at 92% 8%, rgba(5, 150, 105, 0.12), transparent 30%),
-    linear-gradient(135deg, rgba(236, 254, 255, 0.72), rgba(248, 250, 252, 0.92)),
-    var(--medical-bg);
+  background: var(--medical-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #app {
@@ -33,78 +30,84 @@ body {
   max-width: 100vw;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5 {
+h1, h2, h3, h4, h5 {
   margin: 0;
   color: var(--medical-ink);
+  font-weight: 600;
 }
 
-p {
-  margin: 0;
-}
+p { margin: 0; }
 
-a {
-  color: inherit;
-}
+a { color: inherit; text-decoration: none; }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
+button, input, select, textarea { font: inherit; }
 
-button,
-a,
-summary,
-.el-button,
-.el-dropdown,
-.el-select,
-.el-upload {
+button, a, summary, .el-button, .el-dropdown, .el-select, .el-upload {
   cursor: pointer;
 }
 
 :focus-visible {
-  outline: 3px solid rgba(8, 145, 178, 0.36);
-  outline-offset: 3px;
+  outline: 2px solid var(--medical-primary);
+  outline-offset: 2px;
 }
 
-.w-full {
-  width: 100%;
-}
+.w-full { width: 100%; }
 
 .page-shell {
-  max-width: 1180px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 24px 18px 40px;
+  padding: 24px 20px 40px;
 }
 
-.page-stack {
-  display: grid;
-  gap: 16px;
+.page-stack { display: grid; gap: 20px; }
+
+/* Element Plus overrides */
+.el-card {
+  border-radius: var(--medical-radius-lg) !important;
+  border: 1px solid var(--medical-border) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
 }
 
-.clinical-dialog-overlay,
-.clinical-drawer-overlay {
-  background: rgba(15, 23, 42, 0.45);
+.el-button--primary {
+  border-radius: 8px !important;
+  font-weight: 500;
 }
 
-body.el-popup-parent--hidden {
-  overflow-y: auto !important;
-  padding-right: 0 !important;
+.el-table {
+  --el-table-border-color: var(--medical-border);
+  border-radius: 8px;
 }
 
-.el-overlay {
-  overflow: auto;
+.el-table th.el-table__cell {
+  background: var(--medical-bg-soft) !important;
+  color: var(--medical-text) !important;
+  font-weight: 600 !important;
+  font-size: 13px;
 }
 
-.el-dialog {
-  margin: 6vh auto 24px !important;
+.el-tag {
+  border-radius: 6px !important;
+  font-weight: 500;
 }
 
-.el-message {
-  max-width: calc(100vw - 24px);
+.el-select .el-input__wrapper,
+.el-input__wrapper {
+  border-radius: 8px !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--medical-border-strong); border-radius: 3px; }
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+@media (max-width: 768px) {
+  .page-shell { padding: 16px 12px 32px; }
 }
