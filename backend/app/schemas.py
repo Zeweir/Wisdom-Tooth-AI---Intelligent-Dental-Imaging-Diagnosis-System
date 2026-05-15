@@ -7,6 +7,31 @@ ImageType = Literal['panoramic', 'periapical', 'cbct']
 ReportStatus = Literal['processing', 'ai_generated', 'doctor_reviewed', 'finalized']
 
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class LoginUserPayload(BaseModel):
+    user_id: str
+    username: str
+    display_name: str
+    role: str
+    role_label: str
+    permissions: list[str]
+
+
+class LoginResponseData(BaseModel):
+    access_token: str
+    token_type: str = 'bearer'
+    user: LoginUserPayload
+
+
+class LoginResponse(BaseModel):
+    code: int
+    data: LoginResponseData
+
+
 class Detection(BaseModel):
     bbox: list[int]
     class_: str = Field(alias='class')

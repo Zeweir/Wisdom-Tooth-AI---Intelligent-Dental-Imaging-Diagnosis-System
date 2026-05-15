@@ -1,8 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { getStoredToken } from '../api/http'
 
 import AppLayout from '../layouts/AppLayout.vue'
 
-const AuthCallbackPanel = () => import('../components/AuthCallbackPanel.vue')
+const LoginPage = () => import('../pages/LoginPage.vue')
 const AccessPage = () => import('../pages/AccessPage.vue')
 const AuditPage = () => import('../pages/AuditPage.vue')
 const DatasetPage = () => import('../pages/DatasetPage.vue')
@@ -15,9 +16,10 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
-      path: '/callback',
-      name: 'callback',
-      component: AuthCallbackPanel
+      path: '/login',
+      name: 'login',
+      component: LoginPage,
+      meta: { public: true },
     },
     {
       path: '/',
@@ -53,17 +55,17 @@ const router = createRouter({
         {
           path: 'upload',
           name: 'upload',
-          redirect: (to) => ({ path: '/workspace', query: to.query }),
+          redirect: (to: any) => ({ path: '/workspace', query: to.query }),
         },
         {
           path: 'diagnosis',
           name: 'diagnosis',
-          redirect: (to) => ({ path: '/workspace', query: to.query }),
+          redirect: (to: any) => ({ path: '/workspace', query: to.query }),
         },
         {
           path: 'reports',
           name: 'reports',
-          redirect: (to) => ({ path: '/workspace', query: to.query }),
+          redirect: (to: any) => ({ path: '/workspace', query: to.query }),
         },
         {
           path: 'settings',
@@ -111,6 +113,23 @@ const router = createRouter({
   scrollBehavior() {
     return { top: 0 }
   }
+})
+
+router.beforeEach((to, _from, next) => {
+  const token = getStoredToken()
+  if (to.name === 'login') {
+    if (token) {
+      next('/')
+    } else {
+      next()
+    }
+    return
+  }
+  if (!token) {
+    next('/login')
+    return
+  }
+  next()
 })
 
 export default router

@@ -1,19 +1,17 @@
 import axios from "axios";
 
 export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
-export const logtoEndpoint =
-  import.meta.env.VITE_LOGTO_ENDPOINT ?? "http://127.0.0.1:3001";
-export const logtoAppId = import.meta.env.VITE_LOGTO_APP_ID ?? "";
-export const logtoApiResource =
-  import.meta.env.VITE_LOGTO_API_RESOURCE ??
-  "https://api.wisdom-tooth-ai.local";
 
-type AccessTokenProvider = () => Promise<string | null>;
+export function getStoredToken(): string | null {
+  return localStorage.getItem("access_token");
+}
 
-let accessTokenProvider: AccessTokenProvider | null = null;
-
-export function setAccessTokenProvider(provider: AccessTokenProvider | null) {
-  accessTokenProvider = provider;
+export function setStoredToken(token: string | null) {
+  if (token) {
+    localStorage.setItem("access_token", token);
+  } else {
+    localStorage.removeItem("access_token");
+  }
 }
 
 export function resolveApiUrl(path: string) {
@@ -34,11 +32,7 @@ export const http = axios.create({
 });
 
 http.interceptors.request.use(async (config) => {
-  if (!accessTokenProvider) {
-    return config;
-  }
-
-  const token = await accessTokenProvider();
+  const token = getStoredToken();
   if (!token) {
     return config;
   }
@@ -50,7 +44,7 @@ http.interceptors.request.use(async (config) => {
 
 export async function fetchProtectedBlobUrl(path: string) {
   const resolvedUrl = resolveApiUrl(path);
-  const token = accessTokenProvider ? await accessTokenProvider() : null;
+  const token = getStoredToken();
   const response = await axios.get<Blob>(resolvedUrl, {
     responseType: "blob",
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -60,7 +54,7 @@ export async function fetchProtectedBlobUrl(path: string) {
 
 export async function fetchProtectedBlob(path: string) {
   const resolvedUrl = resolveApiUrl(path);
-  const token = accessTokenProvider ? await accessTokenProvider() : null;
+  const token = getStoredToken();
   const response = await axios.get<Blob>(resolvedUrl, {
     responseType: "blob",
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,

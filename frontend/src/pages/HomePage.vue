@@ -67,7 +67,7 @@ onMounted(async () => {
     <UnauthorizedPanel
       v-if="isAuthenticated && authReady && !hasWorkbenchAccess"
       title="当前账号暂无工作台访问权限"
-      description="请在 Logto 中为该用户分配 radiologist、doctor 或 chief_doctor 等角色后再重试。"
+      description="请联系管理员为您分配相应角色后再重试。"
     >
       <el-button @click="beginSignOut">退出当前账号</el-button>
     </UnauthorizedPanel>

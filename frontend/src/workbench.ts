@@ -31,7 +31,7 @@ export interface WorkbenchContext {
   reviewText: Ref<string>
   socketEvents: Ref<string[]>
   authReady: Ref<boolean>
-  displayName: Ref<string>
+  displayName: ComputedRef<string>
   authProfile: Ref<AuthProfile | null>
   rbacModel: Ref<RbacModel | null>
   auditLogs: Ref<AuditLogItem[]>
@@ -41,17 +41,11 @@ export interface WorkbenchContext {
   dashboardSummary: Ref<DashboardSummary | null>
   filters: Ref<AnalysisFilters>
   recordsPagination: Ref<PaginationMeta>
-  isAuthenticated: Ref<boolean>
+  isAuthenticated: ComputedRef<boolean>
   isLoading: Ref<boolean>
   currentRecord: ComputedRef<AnalysisItem | null>
   visibleMenus: ComputedRef<MenuCapability[]>
   currentRoles: ComputedRef<string[]>
-  tokenRoleLabels: ComputedRef<string[]>
-  inferredRoleLabels: ComputedRef<string[]>
-  roleSourceLabel: ComputedRef<string>
-  claimPreviewEntries: ComputedRef<Array<[string, unknown]>>
-  tokenClaimKeysText: ComputedRef<string>
-  roleClaimKeysText: ComputedRef<string>
   displayedRoles: ComputedRef<DisplayRole[]>
   canUpload: ComputedRef<boolean>
   canReadImages: ComputedRef<boolean>
@@ -60,9 +54,6 @@ export interface WorkbenchContext {
   canViewAccessPanel: ComputedRef<boolean>
   canViewAuditLogs: ComputedRef<boolean>
   hasWorkbenchAccess: ComputedRef<boolean>
-  configuredRoleClaimNamesText: ComputedRef<string>
-  roleClaimAlignmentTagType: ComputedRef<'success' | 'warning' | 'danger'>
-  roleClaimAlignmentLabel: ComputedRef<string>
   navigationItems: ComputedRef<NavigationItem[]>
   dashboardStats: ComputedRef<DashboardStat[]>
   clinicalInsights: ComputedRef<DashboardStat[]>

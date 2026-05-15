@@ -9,9 +9,22 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.audit import count_audit_logs, create_user_audit_log, list_audit_logs, serialize_audit_log
-from app.auth import AuthInfo, authorize_websocket, build_auth_profile, build_rbac_model_payload, ensure_scopes, require_api_auth
+from app import auth as auth_module
+from app.auth import (
+    AuthInfo,
+    authorize_websocket,
+    build_auth_profile,
+    build_rbac_model_payload,
+    create_access_token,
+    ensure_scopes,
+    hash_password,
+    require_api_auth,
+    seed_default_users,
+    verify_password,
+)
 from app.config import ALLOWED_ORIGINS
-from app.database import SessionLocal, get_db
+from app.database import SessionLocal, engine, get_db
+from app.models import Base, UserRecord
 from app.dataset_imports import (
     create_dataset_import,
     create_dataset_import_from_url,
@@ -54,6 +67,7 @@ from app.schemas import (
     DatasetSplitResponse,
     DatasetSeedResponse,
     ImageType,
+    LoginRequest,
     ModelEvaluationCreateRequest,
     ModelEvaluationListResponse,
     ModelEvaluationResponse,
@@ -72,7 +86,7 @@ from app.services import build_dashboard_summary, build_image_record, normalize_
 from app.storage import storage_service
 from app.tasks import run_image_analysis
 
-app = FastAPI(title="Wisdom Tooth AI MVP API", version="0.2.0")
+app = FastAPI(title="Wisdom Tooth AI MVP API", version="0.3.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -80,6 +94,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+def on_startup() -> None:
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        seed_default_users(db)
+    finally:
+        db.close()
 
 
 def get_image_or_404(db: Session, image_id: str) -> ImageRecord:
@@ -118,13 +142,38 @@ def health(db: Session = Depends(get_db)) -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.post("/api/v1/auth/login")
+def login(payload: LoginRequest, db: Session = Depends(get_db)) -> dict[str, Any]:
+    user = db.execute(select(UserRecord).where(UserRecord.username == payload.username)).scalar_one_or_none()
+    if user is None or not verify_password(payload.password, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='用户名或密码错误')
+    token = create_access_token(user.user_id, user.username, user.role, user.display_name or user.username)
+    scopes = auth_module.get_scopes_for_role(user.role)
+    role_def = next((r for r in auth_module.RBAC_ROLE_DEFINITIONS if r.key == user.role), None)
+    return {
+        "code": 200,
+        "data": {
+            "access_token": token,
+            "token_type": "bearer",
+            "user": {
+                "user_id": user.user_id,
+                "username": user.username,
+                "display_name": user.display_name or user.username,
+                "role": user.role,
+                "role_label": role_def.label if role_def else user.role,
+                "permissions": scopes,
+            },
+        },
+    }
+
+
 @app.get("/api/v1/auth/me")
-def get_auth_profile(auth: AuthInfo = Depends(require_api_auth(enforce_role_claim=False))) -> dict[str, Any]:
+def get_auth_profile(auth: AuthInfo = Depends(require_api_auth())) -> dict[str, Any]:
     return {"code": 200, "data": build_auth_profile(auth)}
 
 
 @app.get("/api/v1/auth/rbac-model")
-def get_rbac_model(_: AuthInfo = Depends(require_api_auth(enforce_role_claim=False))) -> dict[str, Any]:
+def get_rbac_model(auth: AuthInfo = Depends(require_api_auth())) -> dict[str, Any]:
     return {"code": 200, "data": build_rbac_model_payload()}
 
 

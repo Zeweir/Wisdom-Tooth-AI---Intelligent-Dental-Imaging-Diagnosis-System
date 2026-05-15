@@ -52,3 +52,6 @@ deploy/nginx/certs/*.key
 Thumbs.db
 .idea/
 .vscode/
+
+.claude/
+.playwright-mcp/

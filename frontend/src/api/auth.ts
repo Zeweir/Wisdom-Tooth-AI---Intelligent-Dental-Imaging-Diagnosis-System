@@ -1,5 +1,13 @@
 import { http } from './http'
-import type { AuthProfile, RbacModel } from '../types/auth'
+import type { AuthProfile, LoginResponse, RbacModel } from '../types/auth'
+
+export async function login(username: string, password: string) {
+  const response = await http.post<LoginResponse>('/api/v1/auth/login', {
+    username,
+    password,
+  })
+  return response.data.data
+}
 
 export async function getAuthProfile() {
   const response = await http.get<{ code: number; data: AuthProfile }>('/api/v1/auth/me')

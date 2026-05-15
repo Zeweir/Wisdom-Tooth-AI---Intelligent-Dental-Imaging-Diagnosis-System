@@ -3,13 +3,13 @@ import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 
 import { createAnalysisSocket, uploadImage } from '../../api/analysis'
-import { logtoApiResource } from '../../api/http'
+import { getStoredToken } from '../../api/http'
 import type { AnalysisItem } from '../../types/analysis'
 
 interface WorkbenchUploadOptions {
   canUpload: ComputedRef<boolean>
   canReadImages: ComputedRef<boolean>
-  getAccessToken: (resource?: string) => Promise<string | undefined>
+  getAccessToken: () => Promise<string | null>
   fetchRecords: () => Promise<void>
   waitForAnalysisCompletion: (imageId: string) => Promise<AnalysisItem | null>
   refreshAuditLogs: () => Promise<void>
@@ -26,12 +26,12 @@ export function useWorkbenchUpload(options: WorkbenchUploadOptions) {
 
   function connectProgress(imageId: string) {
     socketEvents.value = []
-    options.getAccessToken(logtoApiResource).then((rawAccessToken) => {
-      const accessToken = normalizeAccessToken(rawAccessToken)
-      if (!accessToken) {
-        socketEvents.value.push('analysis.socket_error / missing_token')
-        return
-      }
+    const accessToken = getStoredToken()
+    if (!accessToken) {
+      socketEvents.value.push('analysis.socket_error / missing_token')
+      return
+    }
+    Promise.resolve().then(() => {
       const socket = createAnalysisSocket(imageId, accessToken)
       socket.onmessage = (event: MessageEvent<string>) => {
         const payload = JSON.parse(event.data) as { event: string; status: string }

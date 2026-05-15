@@ -10,7 +10,6 @@ export default defineConfig({
         manualChunks: {
           vue: ["vue", "vue-router"],
           element: ["element-plus"],
-          logto: ["@logto/vue"],
         },
       },
     },

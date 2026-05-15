@@ -1,23 +1,27 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Bell, Search } from '@element-plus/icons-vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { useGlobalSearch } from '../composables/useGlobalSearch'
 import { useWorkbenchContext } from '../workbench'
+import { useAuth } from '../composables/useAuth'
 
 const route = useRoute()
+const router = useRouter()
 const workbench = useWorkbenchContext()
+const auth = useAuth()
 const globalSearch = useGlobalSearch()
 
 const pageTitle = computed(() => String(route.meta?.title ?? '工作台'))
 const pageSubtitle = computed(() => String(route.meta?.subtitle ?? '牙齿影像智能诊断系统'))
-const displayName = computed(() => workbench.displayName.value || '未登录用户')
-const roleLabel = computed(() => workbench.displayedRoles.value[0]?.label || '访客')
+const displayName = computed(() => auth.user.value?.display_name || '未登录用户')
+const roleLabel = computed(() => auth.user.value?.role_label || '访客')
 
 async function handleCommand(command: string | number | object) {
   if (command === 'signout') {
-    await workbench.beginSignOut()
+    auth.logout()
+    window.location.replace('/login')
   }
 }
 </script>
@@ -61,10 +65,10 @@ async function handleCommand(command: string | number | object) {
       </el-badge>
 
       <el-button
-        v-if="!workbench.isAuthenticated.value"
+        v-if="!auth.isAuthenticated.value"
         type="primary"
-        :loading="workbench.isLoading.value"
-        @click="workbench.beginSignIn"
+        :loading="auth.isLoading.value"
+        @click="router.push('/login')"
       >
         登录
       </el-button>

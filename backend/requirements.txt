@@ -6,6 +6,8 @@ psycopg[binary]==3.2.3
 alembic==1.14.0
 minio==7.2.12
 pyjwt[crypto]==2.10.1
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
 celery==5.4.0
 redis==5.2.0
 Pillow==11.0.0

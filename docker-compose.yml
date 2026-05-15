@@ -16,23 +16,6 @@ services:
       timeout: 5s
       retries: 5
 
-  logto-postgres:
-    image: postgres:16
-    container_name: wisdom-tooth-ai-logto-postgres
-    environment:
-      POSTGRES_DB: ${LOGTO_POSTGRES_DB:-logto}
-      POSTGRES_USER: ${LOGTO_POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${LOGTO_POSTGRES_PASSWORD:-p0stgr3s}
-    ports:
-      - "${LOGTO_POSTGRES_BIND_HOST:-127.0.0.1}:${LOGTO_POSTGRES_PORT:-5433}:5432"
-    volumes:
-      - logto_postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${LOGTO_POSTGRES_USER:-postgres} -d ${LOGTO_POSTGRES_DB:-logto}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   minio:
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
     container_name: wisdom-tooth-ai-minio
@@ -51,22 +34,6 @@ services:
     container_name: wisdom-tooth-ai-redis
     ports:
       - "${REDIS_BIND_HOST:-127.0.0.1}:${REDIS_PORT:-6379}:6379"
-
-  logto:
-    image: svhd/logto:latest
-    container_name: wisdom-tooth-ai-logto
-    entrypoint: ["sh", "-c", "npm run cli db seed -- --swe && npm start"]
-    environment:
-      TRUST_PROXY_HEADER: ${LOGTO_TRUST_PROXY_HEADER:-1}
-      DB_URL: postgres://${LOGTO_POSTGRES_USER:-postgres}:${LOGTO_POSTGRES_PASSWORD:-p0stgr3s}@logto-postgres:5432/${LOGTO_POSTGRES_DB:-logto}
-      ENDPOINT: ${PUBLIC_SCHEME:-https}://${PUBLIC_HOST:-127.0.0.1}${PUBLIC_LOGTO_PORT_SUFFIX:-:3001}
-      ADMIN_ENDPOINT: ${PUBLIC_SCHEME:-https}://${PUBLIC_HOST:-127.0.0.1}${PUBLIC_LOGTO_ADMIN_PORT_SUFFIX:-:3002}
-    expose:
-      - "3001"
-      - "3002"
-    depends_on:
-      logto-postgres:
-        condition: service_healthy
 
   backend:
     image: wisdom-tooth-ai-backend:local
@@ -88,12 +55,9 @@ services:
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       MINIO_BUCKET: ${MINIO_BUCKET:-wisdom-tooth-images}
       MINIO_SECURE: ${MINIO_SECURE:-false}
-      LOGTO_ENDPOINT: ${PUBLIC_SCHEME:-https}://${PUBLIC_HOST:-127.0.0.1}${PUBLIC_LOGTO_PORT_SUFFIX:-:3001}
-      LOGTO_ISSUER: ${PUBLIC_SCHEME:-https}://${PUBLIC_HOST:-127.0.0.1}${PUBLIC_LOGTO_PORT_SUFFIX:-:3001}/oidc
-      LOGTO_JWKS_URI: http://logto:3001/oidc/jwks
-      LOGTO_API_RESOURCE: ${LOGTO_API_RESOURCE:-https://api.wisdom-tooth-ai.local}
-      LOGTO_ROLE_CLAIM_NAMES: ${LOGTO_ROLE_CLAIM_NAMES:-urn:logto:roles,roles}
-      LOGTO_REQUIRE_ROLE_CLAIM: ${LOGTO_REQUIRE_ROLE_CLAIM:-false}
+      JWT_SECRET: ${JWT_SECRET:-wisdom-tooth-ai-dev-secret-change-in-production}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-480}
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       OLLAMA_ENABLED: ${OLLAMA_ENABLED:-false}
@@ -117,8 +81,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      logto:
-        condition: service_started
       minio:
         condition: service_started
       redis:
@@ -138,12 +100,9 @@ services:
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       MINIO_BUCKET: ${MINIO_BUCKET:-wisdom-tooth-images}
       MINIO_SECURE: ${MINIO_SECURE:-false}
-      LOGTO_ENDPOINT: ${PUBLIC_SCHEME:-https}://${PUBLIC_HOST:-127.0.0.1}${PUBLIC_LOGTO_PORT_SUFFIX:-:3001}
-      LOGTO_ISSUER: ${PUBLIC_SCHEME:-https}://${PUBLIC_HOST:-127.0.0.1}${PUBLIC_LOGTO_PORT_SUFFIX:-:3001}/oidc
-      LOGTO_JWKS_URI: http://logto:3001/oidc/jwks
-      LOGTO_API_RESOURCE: ${LOGTO_API_RESOURCE:-https://api.wisdom-tooth-ai.local}
-      LOGTO_ROLE_CLAIM_NAMES: ${LOGTO_ROLE_CLAIM_NAMES:-urn:logto:roles,roles}
-      LOGTO_REQUIRE_ROLE_CLAIM: ${LOGTO_REQUIRE_ROLE_CLAIM:-false}
+      JWT_SECRET: ${JWT_SECRET:-wisdom-tooth-ai-dev-secret-change-in-production}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-480}
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       OLLAMA_ENABLED: ${OLLAMA_ENABLED:-false}
@@ -174,16 +133,12 @@ services:
       context: ./frontend
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
-        VITE_LOGTO_ENDPOINT: ${PUBLIC_SCHEME:-https}://${PUBLIC_HOST:-127.0.0.1}${PUBLIC_LOGTO_PORT_SUFFIX:-:3001}
-        VITE_LOGTO_APP_ID: ${VITE_LOGTO_APP_ID:-}
-        VITE_LOGTO_API_RESOURCE: ${LOGTO_API_RESOURCE:-https://api.wisdom-tooth-ai.local}
         NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org/}
     container_name: wisdom-tooth-ai-frontend
     ports:
       - "${FRONTEND_BIND_HOST:-127.0.0.1}:${FRONTEND_PORT:-5173}:80"
     depends_on:
       - backend
-      - logto
 
   gateway:
     image: nginx:1.27-alpine
@@ -191,17 +146,13 @@ services:
     ports:
       - "${GATEWAY_HTTP_BIND_HOST:-0.0.0.0}:${GATEWAY_HTTP_PORT:-80}:80"
       - "${GATEWAY_HTTPS_BIND_HOST:-0.0.0.0}:${GATEWAY_HTTPS_PORT:-443}:443"
-      - "${GATEWAY_LOGTO_BIND_HOST:-0.0.0.0}:${GATEWAY_LOGTO_PORT:-3001}:3001"
-      - "${GATEWAY_LOGTO_ADMIN_BIND_HOST:-0.0.0.0}:${GATEWAY_LOGTO_ADMIN_PORT:-3002}:3002"
     volumes:
       - ./deploy/nginx/gateway.conf:/etc/nginx/conf.d/default.conf:ro
       - ./deploy/nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - frontend
       - backend
-      - logto
 
 volumes:
   postgres_data:
-  logto_postgres_data:
   minio_data:
