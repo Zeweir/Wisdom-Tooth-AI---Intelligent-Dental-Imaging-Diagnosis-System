@@ -6,8 +6,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_BACKEND: ghcr.io/${{ github.repository_owner }}/wisdom-tooth-backend
-  IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/wisdom-tooth-frontend
 
 jobs:
   version:
@@ -53,6 +51,13 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Compute image names (lowercase)
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE_BACKEND=${REGISTRY}/${OWNER}/wisdom-tooth-backend" >> $GITHUB_ENV
+          echo "IMAGE_FRONTEND=${REGISTRY}/${OWNER}/wisdom-tooth-frontend" >> $GITHUB_ENV
+          echo "image: ${REGISTRY}/${OWNER}/wisdom-tooth-backend"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
