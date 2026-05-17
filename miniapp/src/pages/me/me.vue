@@ -68,6 +68,13 @@ function showComingSoon() { Taro.showToast({ title: '功能开发中', icon: 'no
           </view>
           <text class="me-menu-arrow">›</text>
         </view>
+        <view class="me-menu-item" @tap="goPage('/pages/datasets/datasets')">
+          <view class="me-menu-left">
+            <text class="me-menu-icon">📚</text>
+            <text class="me-menu-text">数据集中心</text>
+          </view>
+          <text class="me-menu-arrow">›</text>
+        </view>
         <view class="me-menu-item" @tap="goPage('/pages/stats/stats')">
           <view class="me-menu-left">
             <text class="me-menu-icon">📊</text>
@@ -95,6 +102,13 @@ function showComingSoon() { Taro.showToast({ title: '功能开发中', icon: 'no
     <view class="me-menu-group">
       <text class="me-menu-title">设置</text>
       <view class="me-menu-list">
+        <view class="me-menu-item" @tap="goPage('/pages/settings/settings')">
+          <view class="me-menu-left">
+            <text class="me-menu-icon">⚙️</text>
+            <text class="me-menu-text">系统设置</text>
+          </view>
+          <text class="me-menu-arrow">›</text>
+        </view>
         <view class="me-menu-item" @tap="goPage('/pages/notifications/notifications')">
           <view class="me-menu-left">
             <text class="me-menu-icon">🔔</text>

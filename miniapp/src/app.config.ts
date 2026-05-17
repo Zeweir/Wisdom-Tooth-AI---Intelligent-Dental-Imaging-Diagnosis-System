@@ -13,6 +13,8 @@ export default defineAppConfig({
     'pages/patients/patients',
     'pages/patient-detail/patient-detail',
     'pages/image-viewer/image-viewer',
+    'pages/settings/settings',
+    'pages/datasets/datasets',
   ],
   window: {
     backgroundTextStyle: 'light',
