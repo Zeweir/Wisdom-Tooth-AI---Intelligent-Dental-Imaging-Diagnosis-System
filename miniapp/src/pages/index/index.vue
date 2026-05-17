@@ -55,6 +55,11 @@ function goHistory() {
   Taro.switchTab({ url: '/pages/history/history' })
 }
 
+function goPatients() {
+  if (!auth.isLoggedIn) { goLogin(); return }
+  Taro.navigateTo({ url: '/pages/patients/patients' })
+}
+
 function goDetail(imageId: string) {
   Taro.navigateTo({ url: `/pages/result/result?imageId=${imageId}` })
 }
@@ -138,6 +143,18 @@ function formatDate(dateStr: string) {
             <text>开始测评</text>
             <text class="idx-action-arrow">→</text>
           </view>
+        </view>
+      </view>
+      <view class="idx-actions" style="margin-top:12px">
+        <view class="idx-action idx-action-full" @tap="goPatients">
+          <view class="idx-action-icon idx-action-icon-patients">
+            <text class="idx-action-emoji">👥</text>
+          </view>
+          <view class="idx-action-info">
+            <text class="idx-action-label">患者档案</text>
+            <text class="idx-action-desc">管理患者信息，查看历史影像</text>
+          </view>
+          <text class="idx-action-arrow">→</text>
         </view>
       </view>
     </view>
@@ -370,7 +387,15 @@ function formatDate(dateStr: string) {
 }
 .idx-action-icon-upload { background: #ecfdf5; }
 .idx-action-icon-quiz { background: #f0f0ff; }
+.idx-action-icon-patients { background: #eff6ff; }
 .idx-action-emoji { font-size: 32px; line-height: 1; }
+.idx-action-full {
+  display: flex; flex-direction: row; align-items: center;
+  padding: 24px 20px; width: 100%;
+}
+.idx-action-info { flex: 1; margin-left: 16px; }
+.idx-action-info .idx-action-label { margin-bottom: 2px; }
+.idx-action-info .idx-action-desc { margin-bottom: 0; }
 .idx-action-label {
   display: block;
   font-size: 28px;

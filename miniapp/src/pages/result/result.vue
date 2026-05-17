@@ -10,9 +10,47 @@ const progress = ref(0)
 const record = ref<DiagnosisRecord | null>(null)
 const errorMsg = ref('')
 const selectedImage = ref('')
+const showImage = ref(false)
 
 let filePath = ''
 let pollTimer: ReturnType<typeof setInterval> | null = null
+
+// Standard FDI tooth numbering for panoramic view
+const TOOTH_MAP = [
+  { id: '18', label: '18' }, { id: '17', label: '17' }, { id: '16', label: '16' },
+  { id: '15', label: '15' }, { id: '14', label: '14' }, { id: '13', label: '13' },
+  { id: '12', label: '12' }, { id: '11', label: '11' },
+  { id: '21', label: '21' }, { id: '22', label: '22' }, { id: '23', label: '23' },
+  { id: '24', label: '24' }, { id: '25', label: '25' }, { id: '26', label: '26' },
+  { id: '27', label: '27' }, { id: '28', label: '28' },
+  { id: '48', label: '48' }, { id: '47', label: '47' }, { id: '46', label: '46' },
+  { id: '45', label: '45' }, { id: '44', label: '44' }, { id: '43', label: '43' },
+  { id: '42', label: '42' }, { id: '41', label: '41' },
+  { id: '31', label: '31' }, { id: '32', label: '32' }, { id: '33', label: '33' },
+  { id: '34', label: '34' }, { id: '35', label: '35' }, { id: '36', label: '36' },
+  { id: '37', label: '37' }, { id: '38', label: '38' },
+]
+
+const affectedTeeth = computed(() => {
+  if (!record.value?.detections) return new Set<string>()
+  const ids = new Set<string>()
+  for (const d of record.value.detections) {
+    const toothId = (d as any).tooth_id || ''
+    if (toothId && !toothId.startsWith('CBCT')) ids.add(toothId)
+  }
+  return ids
+})
+
+function getToothStatus(toothId: string) {
+  if (affectedTeeth.value.has(toothId)) return 'affected'
+  return ''
+}
+
+function goImageViewer() {
+  if (record.value) {
+    Taro.navigateTo({ url: `/pages/image-viewer/image-viewer?imageId=${record.value.image_id}` })
+  }
+}
 
 useLoad((options) => {
   const imageId = options?.imageId || ''
@@ -190,6 +228,47 @@ const statusIcon = computed(() => {
         <text class="res-done-status-text">{{ statusText }}</text>
       </view>
 
+      <!-- Image Viewer CTA -->
+      <view class="res-img-bar" @tap="goImageViewer">
+        <view class="res-img-bar-left">
+          <text class="res-img-bar-icon">🔍</text>
+          <text class="res-img-bar-text">查看原图与检测标注</text>
+        </view>
+        <text class="res-img-bar-arrow">›</text>
+      </view>
+
+      <!-- Teeth Map -->
+      <view class="res-report" v-if="affectedTeeth.size > 0">
+        <view class="res-report-head">
+          <text class="res-report-title">牙位总览</text>
+          <text class="res-report-date">{{ affectedTeeth.size }} 颗牙异常</text>
+        </view>
+        <view class="res-report-divider" />
+        <view class="res-teeth-map">
+          <view class="res-teeth-row">
+            <view
+              v-for="t in TOOTH_MAP.slice(0, 16)" :key="t.id"
+              class="res-tooth"
+              :class="{ 'res-tooth-hit': affectedTeeth.has(t.id) }"
+            >
+              <text>{{ t.label }}</text>
+            </view>
+          </view>
+          <text class="res-jaw-label">上颌 · Maxillary</text>
+          <view class="res-jaw-div" />
+          <text class="res-jaw-label">下颌 · Mandibular</text>
+          <view class="res-teeth-row">
+            <view
+              v-for="t in TOOTH_MAP.slice(16)" :key="t.id"
+              class="res-tooth"
+              :class="{ 'res-tooth-hit': affectedTeeth.has(t.id) }"
+            >
+              <text>{{ t.label }}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
       <view class="res-report">
         <view class="res-report-head">
           <text class="res-report-title">AI 诊断报告</text>
@@ -294,6 +373,24 @@ const statusIcon = computed(() => {
 .res-done-status { display: flex; flex-direction: column; align-items: center; padding: 32px 0 24px; }
 .res-done-icon { font-size: 64px; }
 .res-done-status-text { font-size: 30px; font-weight: 600; color: #1e293b; margin-top: 12px; display: block; }
+
+/* Image Viewer Bar */
+.res-img-bar { display: flex; flex-direction: row; align-items: center; justify-content: space-between; background: #f0f0ff; border: 1px solid #e0e0ff; border-radius: 16px; padding: 20px 20px; margin-bottom: 16px; }
+.res-img-bar-left { display: flex; flex-direction: row; align-items: center; }
+.res-img-bar-icon { font-size: 28px; margin-right: 10px; }
+.res-img-bar-text { font-size: 26px; color: #5b5fe3; font-weight: 500; }
+.res-img-bar-arrow { font-size: 28px; color: #5b5fe3; }
+
+/* Teeth Map */
+.res-teeth-map { display: flex; flex-direction: column; align-items: center; padding: 8px 0; }
+.res-teeth-row { display: flex; flex-direction: row; justify-content: center; flex-wrap: wrap; margin-bottom: 4px; }
+.res-tooth { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; margin: 2px; border-radius: 8px; background: #f8fafc; border: 1px solid #f1f5f9; }
+.res-tooth text { font-size: 18px; color: #94a3b8; }
+.res-tooth-hit { background: #fef2f2; border-color: #fecaca; }
+.res-tooth-hit text { color: #dc2626; font-weight: 700; }
+.res-jaw-label { font-size: 18px; color: #cbd5e1; text-align: center; display: block; padding: 6px 0; }
+.res-jaw-div { width: 60%; height: 1px; background: #f1f5f9; margin: 4px 0; }
+
 .res-report { background: #fff; border-radius: 20px; padding: 28px 24px; margin-bottom: 16px; }
 .res-report-review { border-left: 4px solid #5b5fe3; }
 .res-report-head { display: flex; flex-direction: row; justify-content: space-between; align-items: center; }

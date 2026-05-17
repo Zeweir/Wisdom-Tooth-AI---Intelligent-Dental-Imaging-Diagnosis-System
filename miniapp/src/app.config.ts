@@ -8,6 +8,11 @@ export default defineAppConfig({
     'pages/me/me',
     'pages/help/help',
     'pages/about/about',
+    'pages/stats/stats',
+    'pages/notifications/notifications',
+    'pages/patients/patients',
+    'pages/patient-detail/patient-detail',
+    'pages/image-viewer/image-viewer',
   ],
   window: {
     backgroundTextStyle: 'light',
