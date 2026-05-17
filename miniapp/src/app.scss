@@ -1,0 +1,13 @@
+page {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-size: 28px;
+  color: #1e293b;
+  background: #f8fafc;
+  line-height: 1.6;
+}
+
+view, text, image, button, input, scroll-view, swiper, swiper-item {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}

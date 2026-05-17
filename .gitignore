@@ -30,6 +30,12 @@ frontend/.env
 frontend/.env.local
 frontend/.env.*.local
 
+# Miniapp dependencies and builds
+miniapp/node_modules/
+miniapp/dist/
+miniapp/.env
+miniapp/.env.local
+
 # Local environment files
 .env
 .env.local

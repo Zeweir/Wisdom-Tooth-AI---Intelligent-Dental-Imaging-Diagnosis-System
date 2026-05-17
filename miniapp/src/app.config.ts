@@ -1,0 +1,30 @@
+export default defineAppConfig({
+  pages: [
+    'pages/index/index',
+    'pages/login/login',
+    'pages/quiz/quiz',
+    'pages/result/result',
+    'pages/history/history',
+    'pages/me/me',
+    'pages/help/help',
+    'pages/about/about',
+  ],
+  window: {
+    backgroundTextStyle: 'light',
+    navigationBarBackgroundColor: '#ffffff',
+    navigationBarTitleText: '智齿 AI',
+    navigationBarTextStyle: 'black',
+  },
+  tabBar: {
+    custom: true,
+    color: '#999999',
+    selectedColor: '#5b5fe3',
+    backgroundColor: '#ffffff',
+    borderStyle: 'white',
+    list: [
+      { pagePath: 'pages/index/index', text: '首页' },
+      { pagePath: 'pages/history/history', text: '记录' },
+      { pagePath: 'pages/me/me', text: '我的' },
+    ],
+  },
+})

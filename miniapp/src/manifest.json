@@ -1,0 +1,23 @@
+{
+  "name": "智齿 AI",
+  "appid": "",
+  "description": "智齿 AI 牙齿影像智能诊断",
+  "versionName": "0.1.0",
+  "versionCode": 1,
+  "transformPx": false,
+  "mp-weixin": {
+    "appid": "",
+    "setting": {
+      "urlCheck": false,
+      "es6": true,
+      "minified": true,
+      "postcss": true
+    },
+    "permission": {
+      "scope.userLocation": {
+        "desc": "用于显示附近的口腔医疗机构"
+      }
+    },
+    "requiredPrivateInfos": ["chooseImage", "uploadFile"]
+  }
+}
